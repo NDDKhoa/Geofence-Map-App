@@ -1,0 +1,479 @@
+[
+  {
+    "code": "HO_GUOM",
+    "name": {
+      "vi": "Hồ Hoàn Kiếm",
+      "en": "Hoan Kiem Lake"
+    },
+    "description": {
+      "vi": "Biểu tượng lịch sử và văn hóa của Hà Nội.",
+      "en": "A historic and cultural symbol of Hanoi."
+    },
+    "latitude": 21.0285,
+    "longitude": 105.8542,
+    "radius": 120,
+    "priority": 3
+  },
+  {
+    "code": "LANG_BAC",
+    "name": {
+      "vi": "Lăng Chủ tịch Hồ Chí Minh",
+      "en": "Ho Chi Minh Mausoleum"
+    },
+    "description": {
+      "vi": "Nơi an nghỉ của Chủ tịch Hồ Chí Minh.",
+      "en": "The resting place of President Ho Chi Minh."
+    },
+    "latitude": 21.0369,
+    "longitude": 105.8342,
+    "radius": 120,
+    "priority": 3
+  },
+  {
+    "code": "VAN_MIEU",
+    "name": {
+      "vi": "Văn Miếu Quốc Tử Giám",
+      "en": "Temple of Literature"
+    },
+    "description": {
+      "vi": "Trường đại học đầu tiên của Việt Nam.",
+      "en": "The first university of Vietnam."
+    },
+    "latitude": 21.0280,
+    "longitude": 105.8356,
+    "radius": 100,
+    "priority": 2
+  },
+  {
+    "code": "CHUA_MOT_COT",
+    "name": {
+      "vi": "Chùa Một Cột",
+      "en": "One Pillar Pagoda"
+    },
+    "description": {
+      "vi": "Ngôi chùa có kiến trúc độc đáo của Hà Nội.",
+      "en": "A unique pagoda in Hanoi."
+    },
+    "latitude": 21.0358,
+    "longitude": 105.8338,
+    "radius": 80,
+    "priority": 2
+  },
+  {
+    "code": "HO_TAY",
+    "name": {
+      "vi": "Hồ Tây",
+      "en": "West Lake"
+    },
+    "description": {
+      "vi": "Hồ nước lớn nhất Hà Nội.",
+      "en": "The largest lake in Hanoi."
+    },
+    "latitude": 21.0478,
+    "longitude": 105.8188,
+    "radius": 150,
+    "priority": 2
+  },
+  {
+    "code": "CHUA_TRAN_QUOC",
+    "name": {
+      "vi": "Chùa Trấn Quốc",
+      "en": "Tran Quoc Pagoda"
+    },
+    "description": {
+      "vi": "Ngôi chùa cổ hơn 1500 năm.",
+      "en": "An ancient pagoda over 1500 years old."
+    },
+    "latitude": 21.0453,
+    "longitude": 105.8366,
+    "radius": 100,
+    "priority": 2
+  },
+  {
+    "code": "PHO_CO_HN",
+    "name": {
+      "vi": "Phố cổ Hà Nội",
+      "en": "Hanoi Old Quarter"
+    },
+    "description": {
+      "vi": "Khu phố cổ với lịch sử hàng trăm năm.",
+      "en": "A historic old quarter in Hanoi."
+    },
+    "latitude": 21.0330,
+    "longitude": 105.8500,
+    "radius": 150,
+    "priority": 3
+  },
+  {
+    "code": "NHA_THO_LON_HN",
+    "name": {
+      "vi": "Nhà thờ Lớn Hà Nội",
+      "en": "St Joseph Cathedral"
+    },
+    "description": {
+      "vi": "Nhà thờ cổ nổi tiếng tại Hà Nội.",
+      "en": "A famous cathedral in Hanoi."
+    },
+    "latitude": 21.0289,
+    "longitude": 105.8485,
+    "radius": 80,
+    "priority": 2
+  },
+  {
+    "code": "HOANG_THANH_TL",
+    "name": {
+      "vi": "Hoàng Thành Thăng Long",
+      "en": "Imperial Citadel of Thang Long"
+    },
+    "description": {
+      "vi": "Di sản thế giới UNESCO.",
+      "en": "A UNESCO World Heritage site."
+    },
+    "latitude": 21.0358,
+    "longitude": 105.8372,
+    "radius": 100,
+    "priority": 2
+  },
+  {
+    "code": "BAO_TANG_HCM",
+    "name": {
+      "vi": "Bảo tàng Hồ Chí Minh",
+      "en": "Ho Chi Minh Museum"
+    },
+    "description": {
+      "vi": "Bảo tàng về cuộc đời Chủ tịch Hồ Chí Minh.",
+      "en": "Museum dedicated to Ho Chi Minh."
+    },
+    "latitude": 21.0370,
+    "longitude": 105.8348,
+    "radius": 100,
+    "priority": 2
+  },
+
+  {
+    "code": "SAPA",
+    "name": {
+      "vi": "Thị trấn Sa Pa",
+      "en": "Sa Pa Town"
+    },
+    "description": {
+      "vi": "Thị trấn du lịch nổi tiếng vùng núi phía Bắc.",
+      "en": "A famous mountain tourist town."
+    },
+    "latitude": 22.3364,
+    "longitude": 103.8438,
+    "radius": 150,
+    "priority": 3
+  },
+  {
+    "code": "FANSIPAN",
+    "name": {
+      "vi": "Đỉnh Fansipan",
+      "en": "Fansipan Peak"
+    },
+    "description": {
+      "vi": "Nóc nhà Đông Dương cao 3143m.",
+      "en": "The highest mountain in Indochina."
+    },
+    "latitude": 22.3033,
+    "longitude": 103.7745,
+    "radius": 200,
+    "priority": 3
+  },
+  {
+    "code": "CAT_CAT",
+    "name": {
+      "vi": "Bản Cát Cát",
+      "en": "Cat Cat Village"
+    },
+    "description": {
+      "vi": "Ngôi làng du lịch của người H'Mông.",
+      "en": "A Hmong ethnic village."
+    },
+    "latitude": 22.3350,
+    "longitude": 103.8380,
+    "radius": 120,
+    "priority": 2
+  },
+  {
+    "code": "THAC_BAC",
+    "name": {
+      "vi": "Thác Bạc",
+      "en": "Silver Waterfall"
+    },
+    "description": {
+      "vi": "Thác nước nổi tiếng tại Sa Pa.",
+      "en": "A famous waterfall near Sa Pa."
+    },
+    "latitude": 22.3535,
+    "longitude": 103.7940,
+    "radius": 120,
+    "priority": 2
+  },
+
+  {
+    "code": "HA_LONG",
+    "name": {
+      "vi": "Vịnh Hạ Long",
+      "en": "Ha Long Bay"
+    },
+    "description": {
+      "vi": "Di sản thiên nhiên thế giới UNESCO.",
+      "en": "A UNESCO World Natural Heritage site."
+    },
+    "latitude": 20.9101,
+    "longitude": 107.1839,
+    "radius": 200,
+    "priority": 3
+  },
+  {
+    "code": "DAO_TITOP",
+    "name": {
+      "vi": "Đảo Ti Tốp",
+      "en": "Titop Island"
+    },
+    "description": {
+      "vi": "Hòn đảo du lịch nổi tiếng.",
+      "en": "A famous tourist island."
+    },
+    "latitude": 20.8596,
+    "longitude": 107.0818,
+    "radius": 120,
+    "priority": 2
+  },
+
+  {
+    "code": "TRANG_AN",
+    "name": {
+      "vi": "Tràng An",
+      "en": "Trang An Landscape Complex"
+    },
+    "description": {
+      "vi": "Danh thắng nổi tiếng tại Ninh Bình.",
+      "en": "A famous scenic complex."
+    },
+    "latitude": 20.2564,
+    "longitude": 105.9746,
+    "radius": 150,
+    "priority": 3
+  },
+  {
+    "code": "BAI_DINH",
+    "name": {
+      "vi": "Chùa Bái Đính",
+      "en": "Bai Dinh Pagoda"
+    },
+    "description": {
+      "vi": "Ngôi chùa lớn nhất Việt Nam.",
+      "en": "The largest pagoda in Vietnam."
+    },
+    "latitude": 20.2670,
+    "longitude": 105.8876,
+    "radius": 150,
+    "priority": 3
+  },
+
+  {
+    "code": "PHONG_NHA",
+    "name": {
+      "vi": "Phong Nha Kẻ Bàng",
+      "en": "Phong Nha Ke Bang"
+    },
+    "description": {
+      "vi": "Di sản thiên nhiên thế giới với hang động lớn.",
+      "en": "A world heritage cave system."
+    },
+    "latitude": 17.5450,
+    "longitude": 106.1410,
+    "radius": 200,
+    "priority": 3
+  },
+
+  {
+    "code": "HUE_CITADEL",
+    "name": {
+      "vi": "Kinh thành Huế",
+      "en": "Hue Imperial Citadel"
+    },
+    "description": {
+      "vi": "Di sản văn hóa thế giới tại Huế.",
+      "en": "A UNESCO heritage site in Hue."
+    },
+    "latitude": 16.4637,
+    "longitude": 107.5909,
+    "radius": 150,
+    "priority": 3
+  },
+  {
+    "code": "CHUA_THIEN_MU",
+    "name": {
+      "vi": "Chùa Thiên Mụ",
+      "en": "Thien Mu Pagoda"
+    },
+    "description": {
+      "vi": "Ngôi chùa nổi tiếng bên sông Hương.",
+      "en": "A famous pagoda on the Perfume River."
+    },
+    "latitude": 16.4525,
+    "longitude": 107.5450,
+    "radius": 120,
+    "priority": 2
+  },
+
+  {
+    "code": "BA_NA",
+    "name": {
+      "vi": "Bà Nà Hills",
+      "en": "Ba Na Hills"
+    },
+    "description": {
+      "vi": "Khu du lịch nổi tiếng tại Đà Nẵng.",
+      "en": "A famous mountain resort."
+    },
+    "latitude": 15.9950,
+    "longitude": 107.9880,
+    "radius": 200,
+    "priority": 3
+  },
+  {
+    "code": "CAU_VANG",
+    "name": {
+      "vi": "Cầu Vàng",
+      "en": "Golden Bridge"
+    },
+    "description": {
+      "vi": "Cây cầu nổi tiếng được nâng bởi hai bàn tay đá.",
+      "en": "The famous bridge held by giant stone hands."
+    },
+    "latitude": 15.9955,
+    "longitude": 107.9960,
+    "radius": 100,
+    "priority": 3
+  },
+
+  {
+    "code": "HOI_AN",
+    "name": {
+      "vi": "Phố cổ Hội An",
+      "en": "Hoi An Ancient Town"
+    },
+    "description": {
+      "vi": "Di sản văn hóa thế giới.",
+      "en": "A UNESCO heritage ancient town."
+    },
+    "latitude": 15.8801,
+    "longitude": 108.3380,
+    "radius": 200,
+    "priority": 3
+  },
+
+  {
+    "code": "NHA_TRANG",
+    "name": {
+      "vi": "Thành phố Nha Trang",
+      "en": "Nha Trang City"
+    },
+    "description": {
+      "vi": "Thành phố biển nổi tiếng.",
+      "en": "A famous coastal city."
+    },
+    "latitude": 12.2388,
+    "longitude": 109.1967,
+    "radius": 200,
+    "priority": 3
+  },
+
+  {
+    "code": "DA_LAT",
+    "name": {
+      "vi": "Thành phố Đà Lạt",
+      "en": "Da Lat City"
+    },
+    "description": {
+      "vi": "Thành phố du lịch vùng cao nguyên.",
+      "en": "A famous highland tourist city."
+    },
+    "latitude": 11.9404,
+    "longitude": 108.4583,
+    "radius": 200,
+    "priority": 3
+  },
+
+  {
+    "code": "CHO_BEN_THANH",
+    "name": {
+      "vi": "Chợ Bến Thành",
+      "en": "Ben Thanh Market"
+    },
+    "description": {
+      "vi": "Khu chợ nổi tiếng tại TP.HCM.",
+      "en": "A famous market in Ho Chi Minh City."
+    },
+    "latitude": 10.7725,
+    "longitude": 106.6980,
+    "radius": 150,
+    "priority": 3
+  },
+  {
+    "code": "DINH_DOC_LAP",
+    "name": {
+      "vi": "Dinh Độc Lập",
+      "en": "Independence Palace"
+    },
+    "description": {
+      "vi": "Di tích lịch sử quan trọng.",
+      "en": "An important historical site."
+    },
+    "latitude": 10.7769,
+    "longitude": 106.6953,
+    "radius": 120,
+    "priority": 3
+  },
+  {
+    "code": "NHA_THO_DUC_BA",
+    "name": {
+      "vi": "Nhà thờ Đức Bà",
+      "en": "Notre Dame Cathedral"
+    },
+    "description": {
+      "vi": "Công trình kiến trúc Pháp nổi tiếng.",
+      "en": "A famous French colonial cathedral."
+    },
+    "latitude": 10.7798,
+    "longitude": 106.6992,
+    "radius": 120,
+    "priority": 3
+  },
+
+  {
+    "code": "PHU_QUOC",
+    "name": {
+      "vi": "Đảo Phú Quốc",
+      "en": "Phu Quoc Island"
+    },
+    "description": {
+      "vi": "Đảo du lịch lớn nhất Việt Nam.",
+      "en": "The largest tourist island in Vietnam."
+    },
+    "latitude": 10.2899,
+    "longitude": 103.9840,
+    "radius": 200,
+    "priority": 3
+  },
+
+  {
+    "code": "CON_DAO",
+    "name": {
+      "vi": "Côn Đảo",
+      "en": "Con Dao Islands"
+    },
+    "description": {
+      "vi": "Quần đảo lịch sử và du lịch nổi tiếng.",
+      "en": "A historic island archipelago."
+    },
+    "latitude": 8.6820,
+    "longitude": 106.6080,
+    "radius": 200,
+    "priority": 3
+  }
+]

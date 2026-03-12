@@ -8,16 +8,23 @@ namespace MauiApp1.Views;
 public partial class MapPage : ContentPage
 {
     private readonly MapViewModel _vm;
+
     private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+
     private bool _isTracking;
     private bool _poisDrawn;
-    private CancellationTokenSource? _cts;
+
     private readonly Dictionary<Pin, Poi> _pinToPoi = new();
+
+    private Pin? _userPin;
 
     public MapPage(MapViewModel vm)
     {
         InitializeComponent();
         BindingContext = _vm = vm;
+
+        _vm.SetLanguage("vi");
     }
 
     private async void OnPinMarkerClicked(object? sender, PinClickedEventArgs e)
@@ -26,10 +33,10 @@ public partial class MapPage : ContentPage
 
         if (_pinToPoi.TryGetValue(pin, out var poi))
         {
-            Map.MoveToRegion(MapSpan.FromCenterAndRadius(
-                pin.Location, Distance.FromMeters(200)));
+            Map.MoveToRegion(
+                MapSpan.FromCenterAndRadius(pin.Location, Distance.FromMeters(200)));
 
-            await _vm.PlayPoiAsync(poi, "en");
+            await _vm.PlayPoiAsync(poi, _vm.CurrentLanguage);
 
             e.HideInfoWindow = true;
         }
@@ -48,14 +55,17 @@ public partial class MapPage : ContentPage
         await _vm.LoadPoisAsync();
 
         _isTracking = true;
+
         _cts = new CancellationTokenSource();
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+
         _ = StartTrackingAsync(_cts.Token);
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+
         _isTracking = false;
         _poisDrawn = false;
 
@@ -77,38 +87,20 @@ public partial class MapPage : ContentPage
                    await _timer.WaitForNextTickAsync(ct))
             {
                 await _vm.UpdateLocationAsync();
+
                 var location = _vm.CurrentLocation;
                 if (location == null) continue;
 
                 var center = new Location(location.Latitude, location.Longitude);
-                Map.MoveToRegion(MapSpan.FromCenterAndRadius(center, Distance.FromMeters(200)));
+
+                DrawUserLocation(center);
 
                 if (!_poisDrawn)
                 {
-                    Map.Pins.Clear();
-                    Map.MapElements.Clear();
-                    _pinToPoi.Clear();
+                    DrawPois();
 
-                    foreach (var poi in _vm.Pois)
-                    {
-                        var pin = new Pin
-                        {
-                            Label = poi.GetName("en"),
-                            Address = poi.GetDescription("en"),
-                            Location = new Location(poi.Latitude, poi.Longitude)
-                        };
-
-                        pin.MarkerClicked += OnPinMarkerClicked;
-
-                        Map.Pins.Add(pin);
-                        _pinToPoi[pin] = poi;
-
-                        Map.MapElements.Add(new Circle
-                        {
-                            Center = pin.Location,
-                            Radius = Distance.FromMeters(poi.Radius)
-                        });
-                    }
+                    Map.MoveToRegion(
+                        MapSpan.FromCenterAndRadius(center, Distance.FromMeters(500)));
 
                     _poisDrawn = true;
                 }
@@ -116,7 +108,57 @@ public partial class MapPage : ContentPage
         }
         catch (OperationCanceledException)
         {
-            // bình thường khi rời page
+        }
+    }
+
+    private void DrawUserLocation(Location location)
+    {
+        if (_userPin == null)
+        {
+            _userPin = new Pin
+            {
+                Label = "Bạn đang ở đây",
+                Location = location,
+                Type = PinType.Generic
+            };
+
+            Map.Pins.Add(_userPin);
+        }
+        else
+        {
+            _userPin.Location = location;
+        }
+    }
+
+    private void DrawPois()
+    {
+        Map.MapElements.Clear();
+        _pinToPoi.Clear();
+
+        foreach (var poi in _vm.Pois)
+        {
+            var pin = new Pin
+            {
+                Label = poi.GetName(_vm.CurrentLanguage),
+                Address = poi.GetDescription(_vm.CurrentLanguage),
+                Location = new Location(poi.Latitude, poi.Longitude),
+                Type = PinType.Place
+            };
+
+            pin.MarkerClicked += OnPinMarkerClicked;
+
+            Map.Pins.Add(pin);
+
+            _pinToPoi[pin] = poi;
+
+            Map.MapElements.Add(new Circle
+            {
+                Center = pin.Location,
+                Radius = Distance.FromMeters(poi.Radius),
+                StrokeColor = Colors.Blue,
+                FillColor = Colors.LightBlue.WithAlpha(0.3f),
+                StrokeWidth = 2
+            });
         }
     }
 }

@@ -1,8 +1,9 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Microsoft.Maui.Devices.Sensors;
-using MauiApp1.Services;
 using MauiApp1.Models;
+using MauiApp1.Services;
 
 namespace MauiApp1.ViewModels;
 
@@ -12,17 +13,21 @@ public class MapViewModel : INotifyPropertyChanged
     private readonly GeofenceService _geofenceService;
     private readonly PoiDatabase _db;
     private readonly AudioService _audioService;
+    public string CurrentLanguage { get; set; } = "vi";
 
     public MapViewModel(
-        LocationService locationService,
-        GeofenceService geofenceService,
-        PoiDatabase db,
-        AudioService audioService)
+    LocationService locationService,
+    GeofenceService geofenceService,
+    PoiDatabase db,
+    AudioService audioService)
     {
         _locationService = locationService;
         _geofenceService = geofenceService;
         _db = db;
         _audioService = audioService;
+
+        CurrentLanguage = "vi";
+        _geofenceService.CurrentLanguage = CurrentLanguage;
     }
 
     private Location? _currentLocation;
@@ -36,7 +41,6 @@ public class MapViewModel : INotifyPropertyChanged
         }
     }
 
-    // POIs can be loaded from local file, API,... here as a simple list placeholder
     private List<Poi> _pois = new();
     public IReadOnlyList<Poi> Pois => _pois.AsReadOnly();
 
@@ -49,7 +53,6 @@ public class MapViewModel : INotifyPropertyChanged
         await _geofenceService.CheckLocationAsync(loc);
     }
 
-
     public void SetPois(IEnumerable<Poi> pois)
     {
         _pois = pois.ToList();
@@ -57,75 +60,80 @@ public class MapViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(Pois));
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-    void OnPropertyChanged([CallerMemberName] string name = "")
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-    public async Task PlayPoiAsync(Poi poi, string lang = "en")
+    public void SetLanguage(string language)
     {
-        var text = poi.GetDescription(lang);
+        CurrentLanguage = string.IsNullOrWhiteSpace(language) ? "vi" : language;
+        _geofenceService.CurrentLanguage = CurrentLanguage;
+
+        OnPropertyChanged(nameof(CurrentLanguage));
+        OnPropertyChanged(nameof(Pois));
+    }
+
+    public async Task PlayPoiAsync(Poi poi, string? lang = null)
+    {
+        var language = string.IsNullOrWhiteSpace(lang) ? CurrentLanguage : lang;
+
+        var text = poi.GetDescription(language!);
         if (string.IsNullOrWhiteSpace(text))
-            text = poi.GetName(lang);
+            text = poi.GetName(language!);
 
         if (!string.IsNullOrWhiteSpace(text))
-            await _audioService.SpeakAsync(text);
+            await _audioService.SpeakAsync(text, language!);
+    }
+
+    private async Task<List<Poi>> LoadPoisFromJsonAsync()
+    {
+        using var stream = await FileSystem.OpenAppPackageFileAsync("pois.json");
+        using var reader = new StreamReader(stream);
+
+        var json = await reader.ReadToEndAsync();
+
+        var seeds = JsonSerializer.Deserialize<List<PoiSeed>>(json,
+            new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            }) ?? new List<PoiSeed>();
+
+        return seeds
+            .Where(s => !string.IsNullOrWhiteSpace(s.code))
+            .Select(s =>
+            {
+                var poi = new Poi
+                {
+                    Code = s.code.Trim(),
+                    Latitude = s.latitude,
+                    Longitude = s.longitude,
+                    Radius = s.radius <= 0 ? 50 : s.radius,
+                    Priority = s.priority
+                };
+
+                poi.LocalizedNames = s.name ?? new Dictionary<string, string>();
+                poi.LocalizedDescriptions = s.description ?? new Dictionary<string, string>();
+
+                poi.Name = poi.GetName("vi");
+                poi.Description = poi.GetDescription("vi");
+
+                return poi;
+            })
+            .ToList();
     }
 
     public async Task LoadPoisAsync()
     {
-        await _db.InitAsync(); // 👈 đảm bảo DB đã init
+        await _db.InitAsync();
+
+        var seedPois = await LoadPoisFromJsonAsync();
+        await _db.UpsertManyAsync(seedPois);
 
         var pois = await _db.GetAllAsync();
-
-        if (!pois.Any())
-        {
-            var seed = new List<Poi>
-        {
-            new()
-            {
-                Name = "Dinh Độc Lập",
-                Description = "Di tích lịch sử quốc gia đặc biệt",
-                Latitude = 10.7769,
-                Longitude = 106.6953,
-                Radius = 100,
-                Priority = 2
-            },
-            new()
-            {
-                Name = "Nhà thờ Đức Bà",
-                Description = "Biểu tượng kiến trúc Pháp",
-                Latitude = 10.7798,
-                Longitude = 106.6992,
-                Radius = 80,
-                Priority = 1
-            },
-            new() {
-                Name="Bưu điện Trung tâm Sài Gòn",
-                Description="Công trình kiến trúc Pháp nổi tiếng...",
-                Latitude=10.7801, Longitude=106.6992,
-                Radius=80, Priority=2
-            },
-            new() {
-                Name="Chợ Bến Thành",
-                Description="Khu chợ nổi tiếng bậc nhất TP.HCM...",
-                Latitude=10.7725, Longitude=106.6980,
-                Radius=120, Priority=3
-            },
-            new() {
-                Name="Phố đi bộ Nguyễn Huệ",
-                Description="Tuyến phố trung tâm, sôi động về đêm...",
-                Latitude=10.7754, Longitude=106.7030,
-                Radius=150, Priority=1
-            }
-        };
-
-            await _db.InsertManyAsync(seed);
-
-            pois = await _db.GetAllAsync(); // 👈 BẮT BUỘC load lại
-        }
 
         _pois = pois;
         _geofenceService.UpdatePois(_pois);
         OnPropertyChanged(nameof(Pois));
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string name = "")
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

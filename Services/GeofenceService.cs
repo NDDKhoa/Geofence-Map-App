@@ -9,6 +9,7 @@ public class GeofenceService
     private List<Poi> _pois = new();
     private readonly HashSet<int> _alreadyTriggered = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
+    public string CurrentLanguage { get; set; } = "vi";
 
     public GeofenceService(AudioService audioService)
     {
@@ -37,11 +38,11 @@ public class GeofenceService
                 {
                     if (_alreadyTriggered.Contains(poi.Id)) continue;
 
-                    var text = poi.GetDescription("en");
+                    var text = poi.GetDescription(CurrentLanguage);
                     if (string.IsNullOrWhiteSpace(text))
-                        text = poi.GetName("en");
+                        text = poi.GetName(CurrentLanguage);
 
-                    await _audioService.SpeakAsync(text);
+                    await _audioService.SpeakAsync(text, CurrentLanguage);
                     _alreadyTriggered.Add(poi.Id);
                 }
                 else if (distanceMeters > poi.Radius * 1.2)

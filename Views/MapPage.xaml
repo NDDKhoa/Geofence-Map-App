@@ -1,4 +1,5 @@
-﻿<ContentPage
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
@@ -10,7 +11,7 @@
                   IsShowingUser="True"
                   MapType="Street" />
 
-        <!-- Top floating bar -->
+        <!-- TOP FLOATING BAR -->
         <Border Margin="16,48,16,0"
                 Padding="12"
                 BackgroundColor="#FDFBF9EE"
@@ -19,27 +20,48 @@
                 VerticalOptions="Start">
 
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
-                <Border BackgroundColor="#F8E9E0" StrokeThickness="0" Padding="10" StrokeShape="RoundRectangle 16">
+                <Border BackgroundColor="#F8E9E0"
+                        StrokeThickness="0"
+                        Padding="10"
+                        StrokeShape="RoundRectangle 16">
                     <Label Text="🧭" FontSize="18" />
                 </Border>
 
                 <VerticalStackLayout Grid.Column="1" Spacing="2">
-                    <Label Text="Bản đồ Việt Nam" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource BrandPrimaryDark}" />
-                    <Label Text="Khám phá bằng vị trí và âm thanh" FontSize="12" TextColor="{StaticResource TextSecondary}" />
+                    <Label Text="Bản đồ Việt Nam"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource BrandPrimaryDark}" />
+                    <Label Text="Khám phá bằng vị trí và âm thanh"
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
                 </VerticalStackLayout>
 
-                <Button Grid.Column="2" Text="VN" Clicked="OnVietnameseClicked"
-                        WidthRequest="46" HeightRequest="40" CornerRadius="14"
-                        BackgroundColor="#F4ECE7" TextColor="{StaticResource BrandPrimaryDark}" />
+                <Button x:Name="VietnameseButton"
+                        Grid.Column="2"
+                        Text="VN"
+                        Clicked="OnVietnameseClicked"
+                        WidthRequest="46"
+                        HeightRequest="40"
+                        CornerRadius="14"
+                        BackgroundColor="#F4ECE7"
+                        TextColor="{StaticResource BrandPrimaryDark}" />
 
-                <Button Grid.Column="3" Text="EN" Clicked="OnEnglishClicked"
-                        WidthRequest="46" HeightRequest="40" CornerRadius="14"
-                        BackgroundColor="#F4ECE7" TextColor="{StaticResource BrandPrimaryDark}" />
+                <Button x:Name="EnglishButton"
+                        Grid.Column="3"
+                        Text="EN"
+                        Clicked="OnEnglishClicked"
+                        WidthRequest="46"
+                        HeightRequest="40"
+                        CornerRadius="14"
+                        BackgroundColor="#F4ECE7"
+                        TextColor="{StaticResource BrandPrimaryDark}" />
             </Grid>
         </Border>
 
-        <!-- Bottom POI panel -->
+        <!-- BOTTOM PANEL -->
         <Border x:Name="BottomPanel"
+                IsVisible="False"
                 VerticalOptions="End"
                 Margin="16,0,16,20"
                 BackgroundColor="White"
@@ -47,7 +69,10 @@
                 StrokeShape="RoundRectangle 28">
 
             <Border.Shadow>
-                <Shadow Brush="{StaticResource ShadowColor}" Opacity="0.18" Offset="0,8" Radius="18" />
+                <Shadow Brush="{StaticResource ShadowColor}"
+                        Opacity="0.18"
+                        Offset="0,8"
+                        Radius="18" />
             </Border.Shadow>
 
             <Grid RowDefinitions="Auto,Auto,Auto">
@@ -58,19 +83,34 @@
                          BackgroundColor="#D8C8C0"
                          CornerRadius="2" />
 
-                <VerticalStackLayout Grid.Row="1" Padding="20,8,20,6" Spacing="8">
-                    <Label Text="{Binding SelectedPoi.Name}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                    <Label Text="{Binding SelectedPoi.NarrationShort}" FontSize="14" TextColor="{StaticResource TextSecondary}" MaxLines="3" LineBreakMode="TailTruncation" />
+                <VerticalStackLayout Grid.Row="1"
+                                     Padding="20,8,20,6"
+                                     Spacing="8">
+                    <Label Text="{Binding SelectedPoi.Name}"
+                           FontSize="22"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource TextPrimary}" />
+
+                    <Label Text="{Binding SelectedPoi.NarrationShort}"
+                           FontSize="14"
+                           TextColor="{StaticResource TextSecondary}"
+                           MaxLines="3"
+                           LineBreakMode="TailTruncation" />
                 </VerticalStackLayout>
 
-                <Grid Grid.Row="2" Padding="16" ColumnDefinitions="*,*" ColumnSpacing="10">
-                    <Button Text="▶ Nghe chi tiết"
+                <Grid Grid.Row="2"
+                      Padding="16"
+                      ColumnDefinitions="*,*"
+                      ColumnSpacing="10">
+
+                    <Button Text="🔊 Nghe chi tiết"
                             Style="{StaticResource PrimaryButton}"
                             Clicked="OnListenDetailedClicked" />
+
                     <Button Grid.Column="1"
-                            Text="Đóng"
+                            Text="⏹ Dừng"
                             Style="{StaticResource SecondaryButton}"
-                            Clicked="OnClosePanelClicked" />
+                            Clicked="OnStopAudioClicked" />
                 </Grid>
             </Grid>
         </Border>

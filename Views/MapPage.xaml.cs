@@ -15,76 +15,28 @@ public partial class MapPage : ContentPage
     private readonly Dictionary<Pin, Poi> _pinToPoi = new();
     private Pin? _userPin;
 
+    // 🔥 chống spam auto audio
+    private string? _lastAutoPoiId;
+
     public MapPage(MapViewModel vm)
     {
         InitializeComponent();
         BindingContext = _vm = vm;
 
-        BottomPanel.Opacity = 0; // ✅ QUAN TRỌNG
+        InitBottomPanel();
+        UpdateLanguageButtons();
     }
 
-    // Sự kiện 1: Khi bấm vào Cây ghim đỏ trên bản đồ
-    private async void OnPinMarkerClicked(object? sender, PinClickedEventArgs e)
+    private void InitBottomPanel()
     {
-        if (sender is not Pin pin) return;
-
-        if (_pinToPoi.TryGetValue(pin, out var poi))
-        {
-            Map.MoveToRegion(
-                MapSpan.FromCenterAndRadius(pin.Location, Distance.FromMeters(200)));
-
-            // 2. Chặn không cho hiện cái bong bóng mặc định cũ nữa
-            e.HideInfoWindow = true;
-
-            // 3. Báo cho ViewModel biết điểm nào đang được chọn để bật Bảng thông tin (Bottom Panel) lên
-            if (!BottomPanel.IsVisible)
-            {
-                BottomPanel.TranslationY = 300;
-                BottomPanel.Opacity = 0;
-            }
-
-            _vm.SelectedPoi = poi;
-
-            BottomPanel.IsVisible = true; // ✅ bật trước
-
-            await BottomPanel.TranslateToAsync(0, 0, 250, Easing.CubicOut);
-            await BottomPanel.FadeToAsync(1, 200);
-
-            // 4. Vẫn đọc bài ngắn giới thiệu khi vừa bấm
-            await _vm.PlayPoiAsync(poi, _vm.CurrentLanguage);
-        }
+        BottomPanel.IsVisible = false;
+        BottomPanel.Opacity = 0;
+        BottomPanel.TranslationY = 300;
     }
-
-    // --- 2 HÀM MỚI CHO BẢNG THÔNG TIN ---
-    // Khi bấm nút "Nghe chi tiết" màu xanh
-    private async void OnListenDetailedClicked(object sender, EventArgs e)
-    {
-        if (_vm.SelectedPoi != null)
-        {
-            await _vm.PlayPoiDetailedAsync(_vm.SelectedPoi, _vm.CurrentLanguage);
-        }
-    }
-
-    // Khi bấm nút "Đóng"
-    private async void OnClosePanelClicked(object sender, EventArgs e)
-    {
-        await BottomPanel.TranslateToAsync(0, 300, 200, Easing.CubicIn);
-        await BottomPanel.FadeToAsync(0, 150);
-
-        BottomPanel.IsVisible = false; // ✅ tắt sau animation
-        _vm.SelectedPoi = null;
-    }
-    // ------------------------------------
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-
-        if (BottomPanel != null)
-        {
-            BottomPanel.TranslationY = 300; // ẩn dưới màn hình
-        }
-
         _ = OnAppearingAsync();
     }
 
@@ -94,22 +46,27 @@ public partial class MapPage : ContentPage
         {
             if (_isTracking) return;
 
+            InitBottomPanel();
+
             await _vm.LoadPoisAsync();
+            UpdateLanguageButtons();
 
             _isTracking = true;
             _cts = new CancellationTokenSource();
             _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+
             _ = StartTrackingAsync(_cts.Token);
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Error", ex.Message, "OK");
+            await DisplayAlert("Error", ex.Message, "OK");
         }
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+
         _isTracking = false;
         _poisDrawn = false;
 
@@ -119,32 +76,86 @@ public partial class MapPage : ContentPage
 
         _timer?.Dispose();
         _timer = null;
+
+        _vm.StopAudio();
     }
 
-    private void OnVietnameseClicked(object sender, EventArgs e)
+    private async Task StartTrackingAsync(CancellationToken ct)
     {
-        _vm.SetLanguage("vi");
-        ReloadLanguage();
-    }
+        if (_timer == null) return;
 
-    private void OnEnglishClicked(object sender, EventArgs e)
-    {
-        _vm.SetLanguage("en");
-        ReloadLanguage();
-    }
+        try
+        {
+            while (_timer != null && await _timer.WaitForNextTickAsync(ct))
+            {
+                await _vm.UpdateLocationAsync();
 
-    private async void ReloadLanguage()
-    {
-        _vm.SelectedPoi = null;
-        _poisDrawn = false;
-        _userPin = null;
+                var location = _vm.CurrentLocation;
+                if (location == null) continue;
 
-        await _vm.LoadPoisAsync(_vm.CurrentLanguage);
+                var center = new Location(location.Latitude, location.Longitude);
 
-        // delay nhẹ để UI update xong
-        await Task.Delay(50);
+                DrawUserLocation(center);
 
-        DrawPois();
+                // 🔥 FIND NEAREST POI
+                var nearest = _vm.Pois
+                    .Select(p => new
+                    {
+                        Poi = p,
+                        Distance = Location.CalculateDistance(
+                            location,
+                            new Location(p.Latitude, p.Longitude),
+                            DistanceUnits.Meters)
+                    })
+                    .Where(x => x.Distance <= x.Poi.Radius)
+                    .OrderByDescending(x => x.Poi.Priority)
+                    .ThenBy(x => x.Distance)
+                    .FirstOrDefault();
+
+                // 🔥 VÀO POI
+                if (nearest != null && _lastAutoPoiId != nearest.Poi.Id)
+                {
+                    _lastAutoPoiId = nearest.Poi.Id;
+                    _vm.SelectedPoi = nearest.Poi;
+
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        await ShowBottomPanelAsync();
+                        await _vm.PlayPoiAsync(nearest.Poi, _vm.CurrentLanguage);
+                    });
+                }
+
+                // 🔥 RA KHỎI POI
+                else if (nearest == null && _vm.SelectedPoi != null)
+                {
+                    _lastAutoPoiId = null;
+                    _vm.SelectedPoi = null;
+
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        await HideBottomPanelAsync();
+                        _vm.StopAudio();
+                    });
+                }
+
+                if (!_poisDrawn)
+                {
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        DrawPois();
+
+                        Map.MoveToRegion(
+                            MapSpan.FromCenterAndRadius(center, Distance.FromMeters(500)));
+                    });
+
+                    _poisDrawn = true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // OK
+        }
     }
 
     private void DrawUserLocation(Location location)
@@ -162,61 +173,32 @@ public partial class MapPage : ContentPage
         }
         else
         {
+            _userPin.Label = _vm.CurrentLanguage == "en" ? "You are here" : "Bạn đang ở đây";
             _userPin.Location = location;
-        }
-    }
-
-    private async Task StartTrackingAsync(CancellationToken ct)
-    {
-        if (_timer == null) return;
-
-        try
-        {
-            while (_timer != null &&
-                   await _timer.WaitForNextTickAsync(ct))
-            {
-                await _vm.UpdateLocationAsync();
-                var location = _vm.CurrentLocation;
-                if (location == null) continue;
-
-                var center = new Location(location.Latitude, location.Longitude);
-                DrawUserLocation(center);
-
-                if (!_poisDrawn)
-                {
-                    DrawPois();
-
-                    Map.MoveToRegion(
-                        MapSpan.FromCenterAndRadius(center, Distance.FromMeters(500)));
-
-                    _poisDrawn = true;
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // bình thường khi rời page
         }
     }
 
     private void DrawPois()
     {
+        // 🔥 REMOVE EVENT TRƯỚC
+        foreach (var pin in Map.Pins)
+        {
+            pin.MarkerClicked -= OnPinMarkerClicked;
+        }
+
         Map.Pins.Clear();
         Map.MapElements.Clear();
         _pinToPoi.Clear();
 
-        // ❗ add lại user pin trước
         if (_userPin != null)
-        {
             Map.Pins.Add(_userPin);
-        }
 
         foreach (var poi in _vm.Pois)
         {
             var pin = new Pin
             {
-                Label = poi.GetName(_vm.CurrentLanguage),
-                Address = poi.GetDescription(_vm.CurrentLanguage),
+                Label = poi.Name,
+                Address = poi.Summary,
                 Location = new Location(poi.Latitude, poi.Longitude),
                 Type = PinType.Place
             };
@@ -231,9 +213,116 @@ public partial class MapPage : ContentPage
                 Center = pin.Location,
                 Radius = Distance.FromMeters(poi.Radius),
                 StrokeColor = Colors.Blue,
-                FillColor = Colors.LightBlue.WithAlpha(0.3f),
+                FillColor = Colors.LightBlue.WithAlpha(0.25f),
                 StrokeWidth = 2
             });
+        }
+    }
+
+    private async void OnPinMarkerClicked(object? sender, PinClickedEventArgs e)
+    {
+        if (sender is not Pin pin) return;
+        if (!_pinToPoi.TryGetValue(pin, out var poi)) return;
+
+        e.HideInfoWindow = true;
+
+        Map.MoveToRegion(
+            MapSpan.FromCenterAndRadius(pin.Location, Distance.FromMeters(220)));
+
+        _vm.SelectedPoi = poi;
+        _lastAutoPoiId = poi.Id;
+
+        await ShowBottomPanelAsync();
+        await _vm.PlayPoiAsync(poi, _vm.CurrentLanguage);
+    }
+
+    private async Task ShowBottomPanelAsync()
+    {
+        BottomPanel.AbortAnimation("TranslateTo");
+        BottomPanel.AbortAnimation("FadeTo");
+
+        if (!BottomPanel.IsVisible)
+        {
+            BottomPanel.TranslationY = 300;
+            BottomPanel.Opacity = 0;
+            BottomPanel.IsVisible = true;
+        }
+
+        await Task.WhenAll(
+            BottomPanel.TranslateToAsync(0, 0, 250, Easing.CubicOut),
+            BottomPanel.FadeToAsync(1, 200)
+        );
+    }
+
+    private async Task HideBottomPanelAsync()
+    {
+        BottomPanel.AbortAnimation("TranslateTo");
+        BottomPanel.AbortAnimation("FadeTo");
+
+        await Task.WhenAll(
+            BottomPanel.TranslateToAsync(0, 300, 200, Easing.CubicIn),
+            BottomPanel.FadeToAsync(0, 150)
+        );
+
+        BottomPanel.IsVisible = false;
+    }
+
+    private async void OnListenDetailedClicked(object sender, EventArgs e)
+    {
+        if (_vm.SelectedPoi != null)
+            await _vm.PlayPoiDetailedAsync(_vm.SelectedPoi, _vm.CurrentLanguage);
+    }
+
+    private void OnStopAudioClicked(object sender, EventArgs e)
+    {
+        _vm.StopAudio();
+    }
+
+    private async void OnVietnameseClicked(object sender, EventArgs e)
+    {
+        await ReloadLanguageAsync("vi");
+    }
+
+    private async void OnEnglishClicked(object sender, EventArgs e)
+    {
+        await ReloadLanguageAsync("en");
+    }
+
+    private async Task ReloadLanguageAsync(string language)
+    {
+        _vm.SetLanguage(language);
+        _vm.StopAudio();
+        _vm.SelectedPoi = null;
+        _lastAutoPoiId = null;
+
+        if (BottomPanel.IsVisible)
+            await HideBottomPanelAsync();
+
+        _poisDrawn = false;
+
+        await _vm.LoadPoisAsync(language);
+
+        UpdateLanguageButtons();
+        DrawPois();
+    }
+
+    private void UpdateLanguageButtons()
+    {
+        if (_vm.CurrentLanguage == "en")
+        {
+            EnglishButton.BackgroundColor = Color.FromArgb("#D94E2A");
+            EnglishButton.TextColor = Colors.White;
+
+            VietnameseButton.BackgroundColor = Color.FromArgb("#F4ECE7");
+            VietnameseButton.TextColor = Color.FromArgb("#6A2C25");
+        }
+        else
+        {
+            VietnameseButton.BackgroundColor = Color.FromArgb("#D94E2A");
+            VietnameseButton.TextColor = Colors.White;
+
+            EnglishButton.BackgroundColor = Color.FromArgb("#F4ECE7");
+            EnglishButton.TextColor = Color.FromArgb("#6A2C25");
         }
     }
 }

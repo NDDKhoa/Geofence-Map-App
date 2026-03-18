@@ -9,6 +9,7 @@ public class GeofenceService
     private List<Poi> _pois = new();
     private readonly HashSet<string> _alreadyTriggered = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private string? _currentActivePoiId;
     public string CurrentLanguage { get; set; } = "vi";
 
     public GeofenceService(AudioService audioService)
@@ -37,7 +38,7 @@ public class GeofenceService
                         p.Latitude, p.Longitude)
                 })
                 // chỉ lấy những POI trong vùng
-                .Where(x => x.Distance <= x.Poi.Radius * 2)
+                .Where(x => x.Distance <= x.Poi.Radius)
                 // ưu tiên cao trước
                 .OrderByDescending(x => x.Poi.Priority)
                 // nếu cùng priority thì lấy gần nhất
@@ -50,17 +51,20 @@ public class GeofenceService
             {
                 var poi = best.Poi;
 
-                if (!_alreadyTriggered.Contains(poi.Id))
+                if (_currentActivePoiId != poi.Id)
                 {
+                    _currentActivePoiId = poi.Id;
+
                     var text = !string.IsNullOrWhiteSpace(poi.NarrationShort)
                         ? poi.NarrationShort
                         : poi.Name;
 
-                    if (!string.IsNullOrWhiteSpace(text))
-                        await _audioService.SpeakAsync(text, CurrentLanguage);
-
-                    _alreadyTriggered.Add(poi.Id);
+                    await _audioService.SpeakAsync(text, CurrentLanguage);
                 }
+            }
+            else
+            {
+                _currentActivePoiId = null;
             }
 
             // reset trigger khi ra xa

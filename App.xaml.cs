@@ -1,15 +1,10 @@
-﻿using MauiApp1.Views;
-using Microsoft.Extensions.DependencyInjection;
+﻿namespace MauiApp1;
 
-namespace MauiApp1
+public partial class App : Application
 {
-    public partial class App : Application
+    public App(AppShell shell)
     {
-        public App()
-        {
-            InitializeComponent();
-            MainPage = new AppShell();
-        }
+        InitializeComponent();
+        MainPage = shell;
     }
-
 }

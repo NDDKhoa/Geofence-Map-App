@@ -32,6 +32,7 @@ namespace MauiApp1
             builder.Services.AddSingleton<Services.AudioService>();
             builder.Services.AddSingleton<Services.GeofenceService>();
             builder.Services.AddSingleton<ViewModels.MapViewModel>();
+            builder.Services.AddSingleton<AppShell>();
             builder.Services.AddTransient<ExplorePage>();
             builder.Services.AddTransient<AboutPage>();
             builder.Services.AddTransient<MapPage>();

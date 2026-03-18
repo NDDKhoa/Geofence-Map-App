@@ -21,15 +21,20 @@ public class MapViewModel : INotifyPropertyChanged
     public string CurrentLanguage
     {
         get => _currentLanguage;
-        set
+        private set
         {
             if (_currentLanguage != value)
             {
                 _currentLanguage = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsVietnamese));
+                OnPropertyChanged(nameof(IsEnglish));
             }
         }
     }
+
+    public bool IsVietnamese => CurrentLanguage == "vi";
+    public bool IsEnglish => CurrentLanguage == "en";
 
     private Location? _currentLocation;
     public Location? CurrentLocation
@@ -42,24 +47,24 @@ public class MapViewModel : INotifyPropertyChanged
         }
     }
 
-    // --- PHẦN THÊM MỚI: Quản lý địa điểm đang chọn để hiện Bottom Panel ---
     private Poi? _selectedPoi;
     public Poi? SelectedPoi
     {
         get => _selectedPoi;
         set
         {
-            _selectedPoi = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(IsPoiPanelVisible)); // Kích hoạt ẩn/hiện bảng
+            if (_selectedPoi != value)
+            {
+                _selectedPoi = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsPoiPanelVisible));
+            }
         }
     }
 
-    // Trả về true nếu có địa điểm được chọn, false nếu không có
     public bool IsPoiPanelVisible => SelectedPoi != null;
-    // --------------------------------------------------------------------
 
-    public ObservableCollection<Poi> Pois { get; } = new ObservableCollection<Poi>();
+    public ObservableCollection<Poi> Pois { get; } = new();
 
     public MapViewModel(
         LocationService locationService,
@@ -72,7 +77,6 @@ public class MapViewModel : INotifyPropertyChanged
         _db = db;
         _audioService = audioService;
 
-        // Tạm thời set mặc định lúc khởi tạo, sẽ được tính toán lại trong LoadPoisAsync
         CurrentLanguage = "vi";
         _geofenceService.CurrentLanguage = CurrentLanguage;
     }
@@ -86,74 +90,88 @@ public class MapViewModel : INotifyPropertyChanged
         await _geofenceService.CheckLocationAsync(loc);
     }
 
-    public void SetPois(IEnumerable<Poi> pois)
-    {
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            Pois.Clear();
-            foreach (var poi in pois)
-            {
-                Pois.Add(poi);
-            }
-        });
-
-        _geofenceService.UpdatePois(pois.ToList());
-    }
-
-    // Vẫn giữ lại hàm này phòng hờ sau này bạn làm nút bấm đổi ngôn ngữ trên màn hình
     public void SetLanguage(string language)
     {
-        CurrentLanguage = string.IsNullOrWhiteSpace(language) ? "vi" : language;
+        var normalized = string.IsNullOrWhiteSpace(language)
+            ? "vi"
+            : language.Trim().ToLowerInvariant();
+
+        if (normalized != "vi" && normalized != "en")
+            normalized = "vi";
+
+        CurrentLanguage = normalized;
         _geofenceService.CurrentLanguage = CurrentLanguage;
     }
 
-    // Đọc bài NGẮN (NarrationShort) khi mới chạm vào ghim hoặc đi ngang qua
     public async Task PlayPoiAsync(Poi poi, string? lang = null)
     {
-        var language = string.IsNullOrWhiteSpace(lang) ? CurrentLanguage : lang;
-        var text = !string.IsNullOrWhiteSpace(poi.NarrationShort) ? poi.NarrationShort : poi.Name;
+        var language = string.IsNullOrWhiteSpace(lang) ? CurrentLanguage : lang.Trim().ToLowerInvariant();
+
+        var text = !string.IsNullOrWhiteSpace(poi.NarrationShort)
+            ? poi.NarrationShort
+            : poi.Name;
 
         if (!string.IsNullOrWhiteSpace(text))
             await _audioService.SpeakAsync(text, language);
     }
 
-    //  Đọc bài DÀI (NarrationLong) khi người dùng chủ động muốn nghe
     public async Task PlayPoiDetailedAsync(Poi poi, string? lang = null)
     {
-        var language = string.IsNullOrWhiteSpace(lang) ? CurrentLanguage : lang;
+        var language = string.IsNullOrWhiteSpace(lang) ? CurrentLanguage : lang.Trim().ToLowerInvariant();
 
-        // Ưu tiên lấy bài dài. Nếu lỡ JSON điểm này chưa có bài dài, thì lấy tạm bài ngắn đọc đỡ
-        var text = !string.IsNullOrWhiteSpace(poi.NarrationLong) ? poi.NarrationLong :
-                   (!string.IsNullOrWhiteSpace(poi.NarrationShort) ? poi.NarrationShort : poi.Name);
+        var text = !string.IsNullOrWhiteSpace(poi.NarrationLong)
+            ? poi.NarrationLong
+            : (!string.IsNullOrWhiteSpace(poi.NarrationShort) ? poi.NarrationShort : poi.Name);
 
         if (!string.IsNullOrWhiteSpace(text))
             await _audioService.SpeakAsync(text, language);
     }
 
-    private async Task<List<Poi>> LoadPoisFromJsonAsync(string lang)
+    public void StopAudio()
+    {
+        _audioService.Stop();
+    }
+
+    private async Task<List<Poi>> LoadAllPoisFromJsonAsync()
     {
         using var stream = await FileSystem.OpenAppPackageFileAsync("pois.json");
         using var reader = new StreamReader(stream);
 
         var json = await reader.ReadToEndAsync();
-
-        //Dọn sạch các khoảng trắng tàng hình do copy/paste gây lỗi
         json = json.Replace("\u00A0", " ");
 
-        var allPoisFromJson = JsonSerializer.Deserialize<List<Poi>>(json,
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            }) ?? new List<Poi>();
+        var allPois = JsonSerializer.Deserialize<List<Poi>>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<Poi>();
 
-        return allPoisFromJson
-            .Where(p => p.LanguageCode == lang && !string.IsNullOrWhiteSpace(p.Code))
+        return allPois
+            .Where(p =>
+                !string.IsNullOrWhiteSpace(p.Code) &&
+                !string.IsNullOrWhiteSpace(p.LanguageCode))
             .Select(p =>
             {
-                p.Id = $"{p.Code}_{p.LanguageCode}";
+                p.LanguageCode = p.LanguageCode.Trim().ToLowerInvariant();
+                p.Id = $"{p.Code.Trim()}_{p.LanguageCode}";
+                p.Code = p.Code.Trim();
+                p.Name ??= "";
+                p.Summary ??= "";
+                p.NarrationShort ??= "";
+                p.NarrationLong ??= "";
+                if (p.Radius <= 0) p.Radius = 50;
                 return p;
             })
             .ToList();
+    }
+
+    private async Task RefreshPoisCollectionAsync(List<Poi> items)
+    {
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            Pois.Clear();
+            foreach (var poi in items)
+                Pois.Add(poi);
+        });
     }
 
     public async Task LoadPoisAsync(string? preferredLanguage = null)
@@ -164,30 +182,25 @@ public class MapViewModel : INotifyPropertyChanged
             ? CultureInfo.CurrentCulture.TwoLetterISOLanguageName
             : preferredLanguage.Trim().ToLowerInvariant();
 
-        if (string.IsNullOrWhiteSpace(targetLang))
+        if (targetLang != "vi" && targetLang != "en")
             targetLang = "vi";
 
-        var seedPois = await LoadPoisFromJsonAsync(targetLang);
+        var allSeedPois = await LoadAllPoisFromJsonAsync();
 
-        if (seedPois.Count == 0)
+        await _db.UpsertManyAsync(allSeedPois);
+
+        var poisFromDb = await _db.GetAllAsync(targetLang);
+
+        if (poisFromDb.Count == 0 && targetLang != "vi")
         {
             targetLang = "vi";
-            seedPois = await LoadPoisFromJsonAsync(targetLang);
+            poisFromDb = await _db.GetAllAsync(targetLang);
         }
 
         CurrentLanguage = targetLang;
         _geofenceService.CurrentLanguage = CurrentLanguage;
 
-        await _db.UpsertManyAsync(seedPois);
-
-        var poisFromDb = await _db.GetAllAsync(CurrentLanguage);
-
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            Pois.Clear();
-            foreach (var poi in poisFromDb)
-                Pois.Add(poi);
-        });
+        await RefreshPoisCollectionAsync(poisFromDb);
 
         _geofenceService.UpdatePois(poisFromDb);
     }

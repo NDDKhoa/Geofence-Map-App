@@ -11,7 +11,18 @@ public class LocationService
         if (!_permissionGranted)
         {
             var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-            if (status != PermissionStatus.Granted) return null;
+            if (status != PermissionStatus.Granted)
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Permission",
+                        "Cần cấp quyền vị trí để sử dụng app",
+                        "OK");
+                });
+
+                return null;
+            }
             _permissionGranted = true;
         }
 

@@ -9,12 +9,16 @@ public partial class MapPage : ContentPage
 {
     private readonly MapViewModel _vm;
     private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+
     private bool _isTracking;
     private bool _poisDrawn;
-    private CancellationTokenSource? _cts;
+
     private readonly Dictionary<Pin, Poi> _pinToPoi = new();
     private Pin? _userPin;
+
     private string? _lastAutoPoiId;
+    private bool _isUserSelecting;
 
     public MapPage(MapViewModel vm)
     {
@@ -29,7 +33,6 @@ public partial class MapPage : ContentPage
     {
         BottomPanel.IsVisible = false;
         BottomPanel.Opacity = 0;
-        BottomPanel.TranslationY = 300;
     }
 
     protected override void OnAppearing()
@@ -40,25 +43,18 @@ public partial class MapPage : ContentPage
 
     private async Task OnAppearingAsync()
     {
-        try
-        {
-            if (_isTracking) return;
+        if (_isTracking) return;
 
-            InitBottomPanel();
+        InitBottomPanel();
 
-            await _vm.LoadPoisAsync();
-            UpdateLanguageButtons();
+        await _vm.LoadPoisAsync();
+        UpdateLanguageButtons();
 
-            _isTracking = true;
-            _cts = new CancellationTokenSource();
-            _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _isTracking = true;
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
 
-            _ = StartTrackingAsync(_cts.Token);
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Error", ex.Message, "OK");
-        }
+        _ = StartTrackingAsync(_cts.Token);
     }
 
     protected override void OnDisappearing()
@@ -68,16 +64,25 @@ public partial class MapPage : ContentPage
         _isTracking = false;
         _poisDrawn = false;
         _lastAutoPoiId = null;
-        _vm.SelectedPoi = null;
+        _isUserSelecting = false;
 
         _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
-
         _timer?.Dispose();
-        _timer = null;
 
         _vm.StopAudio();
+    }
+
+    private async void OnMapClicked(object? sender, MapClickedEventArgs e)
+    {
+        _isUserSelecting = false;
+
+        _vm.SelectedPoi = null;
+        _lastAutoPoiId = null;
+
+        _vm.StopAudio();
+
+        if (BottomPanel.IsVisible)
+            await HideBottomPanelAsync();
     }
 
     private async Task StartTrackingAsync(CancellationToken ct)
@@ -86,7 +91,7 @@ public partial class MapPage : ContentPage
 
         try
         {
-            while (_timer != null && await _timer.WaitForNextTickAsync(ct))
+            while (await _timer.WaitForNextTickAsync(ct))
             {
                 await _vm.UpdateLocationAsync();
 
@@ -99,6 +104,8 @@ public partial class MapPage : ContentPage
                 {
                     DrawUserLocation(center);
                 });
+
+                if (_isUserSelecting) continue;
 
                 var nearest = _vm.Pois
                     .Select(p => new
@@ -133,6 +140,8 @@ public partial class MapPage : ContentPage
                 }
                 else if (nearest == null && _vm.SelectedPoi != null)
                 {
+                    _isUserSelecting = false;
+
                     _lastAutoPoiId = null;
                     _vm.SelectedPoi = null;
 
@@ -160,6 +169,10 @@ public partial class MapPage : ContentPage
         catch (OperationCanceledException)
         {
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
 
     private void DrawUserLocation(Location location)
@@ -168,16 +181,14 @@ public partial class MapPage : ContentPage
         {
             _userPin = new Pin
             {
-                Label = _vm.CurrentLanguage == "en" ? "You are here" : "Bạn đang ở đây",
-                Location = location,
-                Type = PinType.Generic
+                Label = "Bạn đang ở đây",
+                Location = location
             };
 
             Map.Pins.Add(_userPin);
         }
         else
         {
-            _userPin.Label = _vm.CurrentLanguage == "en" ? "You are here" : "Bạn đang ở đây";
             _userPin.Location = location;
         }
     }
@@ -196,12 +207,12 @@ public partial class MapPage : ContentPage
 
         foreach (var poi in _vm.Pois)
         {
+            var location = new Location(poi.Latitude, poi.Longitude);
+
             var pin = new Pin
             {
                 Label = poi.Name,
-                Address = poi.Summary,
-                Location = new Location(poi.Latitude, poi.Longitude),
-                Type = PinType.Place
+                Location = location
             };
 
             pin.MarkerClicked += OnPinMarkerClicked;
@@ -211,11 +222,11 @@ public partial class MapPage : ContentPage
 
             Map.MapElements.Add(new Circle
             {
-                Center = pin.Location,
+                Center = location,
                 Radius = Distance.FromMeters(poi.Radius),
-                StrokeColor = Colors.Blue,
-                FillColor = Colors.LightBlue.WithAlpha(0.25f),
-                StrokeWidth = 2
+                StrokeColor = Colors.Red,
+                FillColor = Colors.Red.WithAlpha(0.2f),
+                StrokeWidth = 3
             });
         }
     }
@@ -227,11 +238,10 @@ public partial class MapPage : ContentPage
 
         e.HideInfoWindow = true;
 
-        await MainThread.InvokeOnMainThreadAsync(() =>
-        {
-            Map.MoveToRegion(
-                MapSpan.FromCenterAndRadius(pin.Location, Distance.FromMeters(220)));
-        });
+        _isUserSelecting = true;
+
+        Map.MoveToRegion(
+            MapSpan.FromCenterAndRadius(pin.Location, Distance.FromMeters(220)));
 
         _vm.SelectedPoi = poi;
         _lastAutoPoiId = poi.Id;
@@ -242,32 +252,18 @@ public partial class MapPage : ContentPage
 
     private async Task ShowBottomPanelAsync()
     {
-        BottomPanel.AbortAnimation("TranslateTo");
-        BottomPanel.AbortAnimation("FadeTo");
-
         if (!BottomPanel.IsVisible)
         {
-            BottomPanel.TranslationY = 300;
             BottomPanel.Opacity = 0;
             BottomPanel.IsVisible = true;
         }
 
-        await Task.WhenAll(
-            BottomPanel.TranslateToAsync(0, 0, 250, Easing.CubicOut),
-            BottomPanel.FadeToAsync(1, 200)
-        );
+        await BottomPanel.FadeToAsync(1, 200);
     }
 
     private async Task HideBottomPanelAsync()
     {
-        BottomPanel.AbortAnimation("TranslateTo");
-        BottomPanel.AbortAnimation("FadeTo");
-
-        await Task.WhenAll(
-            BottomPanel.TranslateToAsync(0, 300, 200, Easing.CubicIn),
-            BottomPanel.FadeToAsync(0, 150)
-        );
-
+        await BottomPanel.FadeToAsync(0, 150);
         BottomPanel.IsVisible = false;
     }
 
@@ -292,19 +288,16 @@ public partial class MapPage : ContentPage
         await ReloadLanguageAsync("en");
     }
 
-    private async Task ReloadLanguageAsync(string language)
+    private async Task ReloadLanguageAsync(string lang)
     {
-        _vm.SetLanguage(language);
+        _vm.SetLanguage(lang);
         _vm.StopAudio();
-        _vm.SelectedPoi = null;
+
+        _isUserSelecting = false;
         _lastAutoPoiId = null;
+        _vm.SelectedPoi = null;
 
-        if (BottomPanel.IsVisible)
-            await HideBottomPanelAsync();
-
-        _poisDrawn = false;
-
-        await _vm.LoadPoisAsync(language);
+        await _vm.LoadPoisAsync(lang);
 
         UpdateLanguageButtons();
         DrawPois();
@@ -318,7 +311,6 @@ public partial class MapPage : ContentPage
             EnglishButton.TextColor = Colors.White;
 
             VietnameseButton.BackgroundColor = Color.FromArgb("#F4ECE7");
-            VietnameseButton.TextColor = Color.FromArgb("#6A2C25");
         }
         else
         {
@@ -326,7 +318,6 @@ public partial class MapPage : ContentPage
             VietnameseButton.TextColor = Colors.White;
 
             EnglishButton.BackgroundColor = Color.FromArgb("#F4ECE7");
-            EnglishButton.TextColor = Color.FromArgb("#6A2C25");
         }
     }
 }

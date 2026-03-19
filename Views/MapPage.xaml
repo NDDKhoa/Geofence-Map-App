@@ -6,13 +6,19 @@
     x:Class="MauiApp1.Views.MapPage"
     BackgroundColor="{StaticResource SurfaceBackground}">
 
-    <Grid>
-        <maps:Map x:Name="Map"
-                  IsShowingUser="True"
-                  MapType="Street" />
+    <!-- FIX: chia layout đúng -->
+    <Grid RowDefinitions="*,Auto">
 
-        <!-- TOP FLOATING BAR -->
-        <Border Margin="16,48,16,0"
+        <!-- MAP -->
+        <maps:Map x:Name="Map"
+                  Grid.Row="0"
+                  IsShowingUser="True"
+                  MapType="Street" 
+                  MapClicked="OnMapClicked" />
+
+        <!-- TOP BAR -->
+        <Border Grid.Row="0"
+                Margin="16,48,16,0"
                 Padding="12"
                 BackgroundColor="#FDFBF9EE"
                 Stroke="{StaticResource BorderLight}"
@@ -20,8 +26,8 @@
                 VerticalOptions="Start">
 
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+
                 <Border BackgroundColor="#F8E9E0"
-                        StrokeThickness="0"
                         Padding="10"
                         StrokeShape="RoundRectangle 16">
                     <Label Text="🧭" FontSize="18" />
@@ -43,9 +49,7 @@
                         Clicked="OnVietnameseClicked"
                         WidthRequest="46"
                         HeightRequest="40"
-                        CornerRadius="14"
-                        BackgroundColor="#F4ECE7"
-                        TextColor="{StaticResource BrandPrimaryDark}" />
+                        CornerRadius="14" />
 
                 <Button x:Name="EnglishButton"
                         Grid.Column="3"
@@ -53,66 +57,76 @@
                         Clicked="OnEnglishClicked"
                         WidthRequest="46"
                         HeightRequest="40"
-                        CornerRadius="14"
-                        BackgroundColor="#F4ECE7"
-                        TextColor="{StaticResource BrandPrimaryDark}" />
+                        CornerRadius="14" />
             </Grid>
         </Border>
 
         <!-- BOTTOM PANEL -->
         <Border x:Name="BottomPanel"
-                IsVisible="False"
-                VerticalOptions="End"
-                Margin="16,0,16,20"
-                BackgroundColor="White"
-                Stroke="{StaticResource BorderLight}"
-                StrokeShape="RoundRectangle 28">
+        Grid.Row="1"
+        HeightRequest="220"
+        Margin="16,0,16,20"
+        BackgroundColor="White"
+        Stroke="{StaticResource BorderLight}"
+        StrokeShape="RoundRectangle 28"
+        IsVisible="False"
+        Opacity="0">
 
             <Border.Shadow>
                 <Shadow Brush="{StaticResource ShadowColor}"
-                        Opacity="0.18"
-                        Offset="0,8"
-                        Radius="18" />
+                Opacity="0.18"
+                Offset="0,8"
+                Radius="18" />
             </Border.Shadow>
 
-            <Grid RowDefinitions="Auto,Auto,Auto">
-                <BoxView HeightRequest="4"
-                         WidthRequest="42"
-                         HorizontalOptions="Center"
-                         Margin="0,10"
-                         BackgroundColor="#D8C8C0"
-                         CornerRadius="2" />
+            <!-- ✅ FIX: thêm ScrollView -->
+            <ScrollView>
 
-                <VerticalStackLayout Grid.Row="1"
-                                     Padding="20,8,20,6"
-                                     Spacing="8">
-                    <Label Text="{Binding SelectedPoi.Name}"
-                           FontSize="22"
-                           FontAttributes="Bold"
-                           TextColor="{StaticResource TextPrimary}" />
+                <Grid RowDefinitions="Auto,Auto,Auto">
 
-                    <Label Text="{Binding SelectedPoi.NarrationShort}"
-                           FontSize="14"
-                           TextColor="{StaticResource TextSecondary}"
-                           MaxLines="3"
-                           LineBreakMode="TailTruncation" />
-                </VerticalStackLayout>
+                    <!-- drag indicator -->
+                    <BoxView HeightRequest="4"
+                     WidthRequest="42"
+                     HorizontalOptions="Center"
+                     Margin="0,10"
+                     BackgroundColor="#D8C8C0"
+                     CornerRadius="2" />
 
-                <Grid Grid.Row="2"
-                      Padding="16"
-                      ColumnDefinitions="*,*"
-                      ColumnSpacing="10">
+                    <!-- CONTENT -->
+                    <VerticalStackLayout Grid.Row="1"
+                                 Padding="20,8"
+                                 Spacing="8">
 
-                    <Button Text="🔊 Nghe chi tiết"
-                            Style="{StaticResource PrimaryButton}"
-                            Clicked="OnListenDetailedClicked" />
+                        <Label Text="{Binding SelectedPoi.Name}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource TextPrimary}" />
 
-                    <Button Grid.Column="1"
-                            Text="⏹ Dừng"
-                            Style="{StaticResource SecondaryButton}"
-                            Clicked="OnStopAudioClicked" />
+                        <Label Text="{Binding SelectedPoi.NarrationShort}"
+                       FontSize="14"
+                       TextColor="{StaticResource TextSecondary}" />
+                    </VerticalStackLayout>
+
+                    <!-- BUTTON -->
+                    <Grid Grid.Row="2"
+                  Padding="16"
+                  ColumnDefinitions="*,*"
+                  ColumnSpacing="10">
+
+                        <Button Text="🔊 Nghe chi tiết"
+                        Style="{StaticResource PrimaryButton}"
+                        Clicked="OnListenDetailedClicked" />
+
+                        <Button Grid.Column="1"
+                        Text="⏹ Dừng"
+                        Style="{StaticResource SecondaryButton}"
+                        Clicked="OnStopAudioClicked" />
+                    </Grid>
+
                 </Grid>
-            </Grid>
+
+            </ScrollView>
         </Border>
+
     </Grid>
 </ContentPage>

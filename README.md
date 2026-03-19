@@ -52,12 +52,9 @@ Thiết kế lấy cảm hứng từ:
 
 ## 📸 Preview
 
-> (Thêm ảnh vào đây cho xịn hơn)
 
-
-![Home](./Resources/Images/logotravel.png)
+![Home](./Resources/Images/logotravelvn.png)
 ![Map](./Resources/Images/banner.jpg)
-
 
 ---
 

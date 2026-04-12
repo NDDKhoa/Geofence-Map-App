@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MauiApp1.Views.LoginPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MauiApp1.ViewModels"
+    x:DataType="vm:LoginViewModel"
+    Title="Dang nhap"
+    BackgroundColor="{StaticResource SurfaceBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16" VerticalOptions="Center">
+
+            <Label Text="Dang nhap VN GO Travel"
+                   Style="{StaticResource PageTitleLabel}" />
+
+            <Label Text="Su dung tai khoan da dang ky tren may chu."
+                   Style="{StaticResource BodyText}" />
+
+            <Label Text="Email" Style="{StaticResource SectionTitle}" />
+            <Entry Text="{Binding Email}"
+                   Keyboard="Email"
+                   Placeholder="email@example.com"
+                   IsEnabled="{Binding IsNotBusy}" />
+
+            <Label Text="Mat khau" Style="{StaticResource SectionTitle}" />
+            <Entry Text="{Binding Password}"
+                   IsPassword="True"
+                   Placeholder="********"
+                   IsEnabled="{Binding IsNotBusy}" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="#FF6B6B"
+                   IsVisible="{Binding HasError}"
+                   Style="{StaticResource BodyText}" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource BrandPrimaryDark}" />
+
+            <Button Text="Dang nhap"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding LoginCommand}"
+                    IsEnabled="{Binding IsNotBusy}" />
+
+            <Button Text="Dong"
+                    Style="{StaticResource SecondaryButton}"
+                    Clicked="OnCloseClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

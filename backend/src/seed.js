@@ -5,6 +5,7 @@ const { ROLES } = require('./constants/roles');
 const { POI_STATUS } = require('./constants/poi-status');
 const Poi = require('./models/poi.model');
 const PoiRequest = require('./models/poi-request.model');
+const AdminPoiAudit = require('./models/admin-poi-audit.model');
 const connectDB = require('./config/db');
 
 const pois = [
@@ -88,6 +89,8 @@ const seedData = async () => {
         await User.deleteMany();
         await Poi.deleteMany();
         await PoiRequest.deleteMany();
+        // Dev-only reset. Production must not wipe audit history.
+        await AdminPoiAudit.deleteMany();
 
         await User.create({
             email: 'test@vngo.com',

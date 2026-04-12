@@ -4,6 +4,23 @@ namespace MauiApp1.Services;
 
 public static class QrResolver
 {
+    private static bool TryGetQueryParam(string query, string key, out string value)
+    {
+        value = "";
+        if (string.IsNullOrEmpty(query)) return false;
+        var q = query.TrimStart('?');
+        foreach (var part in q.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = part.IndexOf('=');
+            if (eq <= 0) continue;
+            var k = part[..eq];
+            if (!k.Equals(key, StringComparison.OrdinalIgnoreCase)) continue;
+            value = Uri.UnescapeDataString(part[(eq + 1)..]);
+            return !string.IsNullOrWhiteSpace(value);
+        }
+        return false;
+    }
+
     // Parse simple in-app QR formats for Phase-1A: "poi:CODE" or "poi://CODE"
     public static QrParseResult Parse(string? input)
     {
@@ -32,6 +49,19 @@ public static class QrResolver
         {
             try
             {
+                // Signed scan URL: .../scan?t=<jwt> (must be checked before /poi/{code})
+                var path = uri.AbsolutePath.TrimEnd('/');
+                if (path.EndsWith("/scan", StringComparison.OrdinalIgnoreCase) &&
+                    TryGetQueryParam(uri.Query, "t", out var jwtToken))
+                {
+                    return new QrParseResult
+                    {
+                        Success = true,
+                        IsSecureScanToken = true,
+                        ScanToken = jwtToken
+                    };
+                }
+
                 // Split path into segments ignoring empty entries
                 var parts = uri.AbsolutePath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 2)

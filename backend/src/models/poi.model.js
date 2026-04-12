@@ -17,7 +17,8 @@ const poiSchema = new mongoose.Schema({
         enum: Object.values(POI_STATUS),
         default: POI_STATUS.PENDING
     },
-    submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+    submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    rejectionReason: { type: String, default: null, maxlength: 2000 }
 }, {
     timestamps: true
 });

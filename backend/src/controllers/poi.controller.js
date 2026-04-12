@@ -1,5 +1,18 @@
 const poiService = require('../services/poi.service');
 
+exports.scan = async (req, res, next) => {
+    try {
+        const token = req.body && typeof req.body.token === 'string' ? req.body.token : '';
+        const poi = await poiService.resolveQrScanToken(token, req.user);
+        res.status(200).json({
+            success: true,
+            data: poi
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.getNearby = async (req, res, next) => {
     try {
         const { lat, lng, radius, limit, page } = req.query;

@@ -40,6 +40,7 @@
 
 - **`role`:** `user.role ?? ROLES.USER` (legacy DB docs without `role` treated as `USER` in JSON).
 - **`isPremium`:** boolean from document.
+- **MAUI client:** `AuthService` maps this shape via **`LoginApiEnvelope`** → **`Data`** (`Models/Auth/LoginDtos.cs`); **admin-web** uses the same JSON fields from `fetch`/`axios`.
 
 ### 1.5 Login validation rules (`auth.service.js`)
 

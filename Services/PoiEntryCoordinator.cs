@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using MauiApp1.ApplicationContracts.Repositories;
 using MauiApp1.ApplicationContracts.Services;
 using MauiApp1.Models;
@@ -9,7 +10,13 @@ namespace MauiApp1.Services;
 
 public class PoiEntryCoordinator : IPoiEntryCoordinator
 {
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
     private readonly IPoiQueryRepository _poiQuery;
+    private readonly IPoiCommandRepository _poiCommand;
+    private readonly ILocalizationService _localization;
+    private readonly ApiService _api;
+    private readonly AuthService _auth;
     private readonly IQrScannerService _qr;
     private readonly INavigationService _navService;
     private readonly AppState _appState;
@@ -19,14 +26,22 @@ public class PoiEntryCoordinator : IPoiEntryCoordinator
 
     public PoiEntryCoordinator(
         IPoiQueryRepository poiQuery,
+        IPoiCommandRepository poiCommand,
+        ILocalizationService localization,
+        ApiService api,
+        AuthService auth,
         IQrScannerService qr,
         INavigationService navService,
         AppState appState)
     {
         _poiQuery = poiQuery;
-        _qr       = qr;
+        _poiCommand = poiCommand;
+        _localization = localization;
+        _api = api;
+        _auth = auth;
+        _qr = qr;
         _navService = navService;
-        _appState   = appState;
+        _appState = appState;
     }
 
     public async Task<PoiEntryResult> HandleEntryAsync(PoiEntryRequest request, CancellationToken cancellationToken = default)
@@ -46,84 +61,11 @@ public class PoiEntryCoordinator : IPoiEntryCoordinator
             if (!parsed.Success)
                 return new PoiEntryResult { Success = false, Error = parsed.Error ?? "Invalid QR" };
 
+            if (parsed.IsSecureScanToken && !string.IsNullOrEmpty(parsed.ScanToken))
+                return await HandleSecureScanAsync(request, parsed.ScanToken, cancellationToken).ConfigureAwait(false);
+
             var code = parsed.Code!;
-
-            // Update shared current POI state early so Map and other listeners can react.
-            try
-            {
-                _appState.SetSelectedPoiByCode(code);
-                Debug.WriteLine($"[QR-NAV] PoiEntryCoordinator set current POI code={code}");
-            }
-            catch { }
-
-            // TODO: Move to UseCase (Stage 4) — duplicate navigation guard / cooldown policy.
-            try
-            {
-                if (!string.IsNullOrEmpty(_lastHandledCode) && string.Equals(_lastHandledCode, code, StringComparison.OrdinalIgnoreCase))
-                {
-                    var since = (DateTime.UtcNow - _lastHandledAt).TotalMilliseconds;
-                    if (since >= 0 && since < 2000)
-                    {
-                        Debug.WriteLine($"[QR-NAV] Duplicate handle suppressed for code='{code}' since={since}ms");
-                        return new PoiEntryResult { Success = true, Navigated = false };
-                    }
-                }
-            }
-            catch { }
-
-            await _poiQuery.InitAsync(cancellationToken).ConfigureAwait(false);
-
-            Debug.WriteLine($"[QR-NAV] PoiEntryCoordinator parsed code={code}");
-
-            var preferred = !string.IsNullOrWhiteSpace(request.PreferredLanguage)
-                ? request.PreferredLanguage
-                : _appState.CurrentLanguage;
-
-            var core = await _poiQuery.GetByCodeAsync(code, null, cancellationToken).ConfigureAwait(false);
-            if (core == null)
-                return new PoiEntryResult { Success = false, Error = "POI not found in database" };
-
-            Debug.WriteLine($"[QR-NAV] POI found: code={code} preferred_lang={preferred}");
-
-            string route;
-            if (request.NavigationMode == PoiNavigationMode.Map)
-            {
-                var qs = $"code={Uri.EscapeDataString(code)}&lang={Uri.EscapeDataString(preferred)}";
-                if (request.Source == PoiEntrySource.Scanner)
-                    qs += "&narrate=1";
-                route = $"//map?{qs}";
-            }
-            else
-            {
-                route = $"/poidetail?code={Uri.EscapeDataString(code)}&lang={Uri.EscapeDataString(preferred)}";
-            }
-
-            Debug.WriteLine(
-                $"[QR-NAV] PoiEntryCoordinator navigating mode={request.NavigationMode} route={route}");
-            if (request.Source == PoiEntrySource.FutureDeepLink
-                && request.NavigationMode == PoiNavigationMode.Detail)
-            {
-                Debug.WriteLine("[DL-NAV] Navigation to PoiDetail started");
-            }
-
-            await _navService.NavigateToAsync(route);
-
-            if (request.Source == PoiEntrySource.FutureDeepLink
-                && request.NavigationMode == PoiNavigationMode.Detail)
-            {
-                Debug.WriteLine("[DL-NAV] Navigation completed");
-            }
-
-            try
-            {
-                _lastHandledCode = code;
-                _lastHandledAt = DateTime.UtcNow;
-            }
-            catch { }
-
-            Debug.WriteLine($"[QR-NAV] PoiEntryCoordinator completed for code={code}");
-
-            return new PoiEntryResult { Success = true, Navigated = true };
+            return await NavigateByCodeAsync(request, code, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -133,5 +75,212 @@ public class PoiEntryCoordinator : IPoiEntryCoordinator
         {
             _isHandling = false;
         }
+    }
+
+    private async Task<PoiEntryResult> HandleSecureScanAsync(PoiEntryRequest request, string token, CancellationToken cancellationToken)
+    {
+        if (!_auth.IsAuthenticated)
+            return new PoiEntryResult { Success = false, Error = "Đăng nhập để quét mã QR bảo mật" };
+
+        using var resp = await _api.PostAsJsonAsync("pois/scan", new { token }, cancellationToken).ConfigureAwait(false);
+        var bodyText = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var msg = TryReadApiErrorMessage(bodyText) ?? $"HTTP {(int)resp.StatusCode}";
+            return new PoiEntryResult { Success = false, Error = msg };
+        }
+
+        PoiScanApiResponse? envelope;
+        try
+        {
+            envelope = JsonSerializer.Deserialize<PoiScanApiResponse>(bodyText, JsonOpts);
+        }
+        catch (Exception ex)
+        {
+            return new PoiEntryResult { Success = false, Error = "Invalid server response: " + ex.Message };
+        }
+
+        var data = envelope?.Data;
+        if (data == null || string.IsNullOrWhiteSpace(data.Code))
+            return new PoiEntryResult { Success = false, Error = "Invalid POI payload from server" };
+
+        var code = data.Code.Trim().ToUpperInvariant();
+
+        await MergeScanResultIntoLocalAsync(data, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            _appState.SetSelectedPoiByCode(code);
+            Debug.WriteLine($"[QR-NAV] secure scan set current POI code={code}");
+        }
+        catch { }
+
+        try
+        {
+            if (!string.IsNullOrEmpty(_lastHandledCode) && string.Equals(_lastHandledCode, code, StringComparison.OrdinalIgnoreCase))
+            {
+                var since = (DateTime.UtcNow - _lastHandledAt).TotalMilliseconds;
+                if (since >= 0 && since < 2000)
+                {
+                    Debug.WriteLine($"[QR-NAV] Duplicate secure scan suppressed code='{code}' since={since}ms");
+                    return new PoiEntryResult { Success = true, Navigated = false };
+                }
+            }
+        }
+        catch { }
+
+        await _poiQuery.InitAsync(cancellationToken).ConfigureAwait(false);
+
+        var preferred = !string.IsNullOrWhiteSpace(request.PreferredLanguage)
+            ? request.PreferredLanguage
+            : _appState.CurrentLanguage;
+
+        var route = BuildRoute(request, code, preferred);
+        Debug.WriteLine($"[QR-NAV] secure scan navigating mode={request.NavigationMode} route={route}");
+        await _navService.NavigateToAsync(route);
+
+        try
+        {
+            _lastHandledCode = code;
+            _lastHandledAt = DateTime.UtcNow;
+        }
+        catch { }
+
+        return new PoiEntryResult { Success = true, Navigated = true };
+    }
+
+    private async Task MergeScanResultIntoLocalAsync(PoiScanData data, CancellationToken cancellationToken)
+    {
+        if (data.Location == null) return;
+        var code = data.Code!.Trim().ToUpperInvariant();
+
+        await _poiQuery.InitAsync(cancellationToken).ConfigureAwait(false);
+
+        var poi = new Poi
+        {
+            Id = code,
+            Code = code,
+            Latitude = data.Location.Lat,
+            Longitude = data.Location.Lng,
+            Radius = 50,
+            Priority = 1
+        };
+        await _poiCommand.UpsertAsync(poi, cancellationToken).ConfigureAwait(false);
+
+        void Reg(string lang, string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            var t = text.Trim();
+            _localization.RegisterDynamicTranslation(code, lang, new PoiLocalization
+            {
+                Code = code,
+                LanguageCode = lang,
+                Name = t,
+                Summary = t,
+                NarrationShort = t,
+                NarrationLong = t
+            });
+        }
+
+        Reg("en", data.Content?.En);
+        Reg("vi", data.Content?.Vi);
+    }
+
+    private async Task<PoiEntryResult> NavigateByCodeAsync(PoiEntryRequest request, string code, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _appState.SetSelectedPoiByCode(code);
+            Debug.WriteLine($"[QR-NAV] PoiEntryCoordinator set current POI code={code}");
+        }
+        catch { }
+
+        try
+        {
+            if (!string.IsNullOrEmpty(_lastHandledCode) && string.Equals(_lastHandledCode, code, StringComparison.OrdinalIgnoreCase))
+            {
+                var since = (DateTime.UtcNow - _lastHandledAt).TotalMilliseconds;
+                if (since >= 0 && since < 2000)
+                {
+                    Debug.WriteLine($"[QR-NAV] Duplicate handle suppressed for code='{code}' since={since}ms");
+                    return new PoiEntryResult { Success = true, Navigated = false };
+                }
+            }
+        }
+        catch { }
+
+        await _poiQuery.InitAsync(cancellationToken).ConfigureAwait(false);
+
+        Debug.WriteLine($"[QR-NAV] PoiEntryCoordinator parsed code={code}");
+
+        var preferred = !string.IsNullOrWhiteSpace(request.PreferredLanguage)
+            ? request.PreferredLanguage
+            : _appState.CurrentLanguage;
+
+        var core = await _poiQuery.GetByCodeAsync(code, null, cancellationToken).ConfigureAwait(false);
+        if (core == null)
+            return new PoiEntryResult { Success = false, Error = "POI not found in database" };
+
+        Debug.WriteLine($"[QR-NAV] POI found: code={code} preferred_lang={preferred}");
+
+        var route = BuildRoute(request, code, preferred);
+
+        Debug.WriteLine(
+            $"[QR-NAV] PoiEntryCoordinator navigating mode={request.NavigationMode} route={route}");
+        if (request.Source == PoiEntrySource.FutureDeepLink
+            && request.NavigationMode == PoiNavigationMode.Detail)
+        {
+            Debug.WriteLine("[DL-NAV] Navigation to PoiDetail started");
+        }
+
+        await _navService.NavigateToAsync(route);
+
+        if (request.Source == PoiEntrySource.FutureDeepLink
+            && request.NavigationMode == PoiNavigationMode.Detail)
+        {
+            Debug.WriteLine("[DL-NAV] Navigation completed");
+        }
+
+        try
+        {
+            _lastHandledCode = code;
+            _lastHandledAt = DateTime.UtcNow;
+        }
+        catch { }
+
+        Debug.WriteLine($"[QR-NAV] PoiEntryCoordinator completed for code={code}");
+
+        return new PoiEntryResult { Success = true, Navigated = true };
+    }
+
+    private static string BuildRoute(PoiEntryRequest request, string code, string preferred)
+    {
+        if (request.NavigationMode == PoiNavigationMode.Map)
+        {
+            var qs = $"code={Uri.EscapeDataString(code)}&lang={Uri.EscapeDataString(preferred)}";
+            if (request.Source == PoiEntrySource.Scanner)
+                qs += "&narrate=1";
+            return $"//map?{qs}";
+        }
+
+        return $"/poidetail?code={Uri.EscapeDataString(code)}&lang={Uri.EscapeDataString(preferred)}";
+    }
+
+    private static string? TryReadApiErrorMessage(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("error", out var err) &&
+                err.TryGetProperty("message", out var m))
+                return m.GetString();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return null;
     }
 }

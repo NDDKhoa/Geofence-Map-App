@@ -1,7 +1,9 @@
 using MauiApp1.ApplicationContracts.Providers;
 using MauiApp1.ApplicationContracts.Repositories;
 using MauiApp1.ApplicationContracts.Services;
+using MauiApp1.Configuration;
 using MauiApp1.Services;
+using MauiApp1.ViewModels;
 using MauiApp1.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -87,8 +89,44 @@ public static class MauiProgram
         builder.Services.AddSingleton<AppState>();
         builder.Services.AddSingleton<INavigationService, NavigationService>();
 
-        builder.Services.AddSingleton<NoOpAuthRepository>();
-        builder.Services.AddSingleton<IAuthRepository>(sp => sp.GetRequiredService<NoOpAuthRepository>());
+        static Uri NormalizeApiBase(string raw)
+        {
+            var t = raw.Trim();
+            if (!t.EndsWith('/'))
+                t += "/";
+            return new Uri(t, UriKind.Absolute);
+        }
+
+        var apiBase = NormalizeApiBase(BackendApiConfiguration.BaseUrl);
+
+        builder.Services.AddSingleton<AuthTokenStore>();
+        builder.Services.AddSingleton(sp =>
+        {
+            var loginClient = new HttpClient
+            {
+                BaseAddress = apiBase,
+                Timeout = TimeSpan.FromSeconds(45)
+            };
+            return new AuthService(loginClient, sp.GetRequiredService<AuthTokenStore>());
+        });
+        builder.Services.AddSingleton(sp =>
+        {
+            var handler = new AuthDelegatingHandler(
+                    sp.GetRequiredService<AuthTokenStore>(),
+                    sp)
+            {
+                InnerHandler = new HttpClientHandler()
+            };
+            var client = new HttpClient(handler)
+            {
+                BaseAddress = apiBase,
+                Timeout = TimeSpan.FromSeconds(45)
+            };
+            return new ApiService(client);
+        });
+
+        builder.Services.AddSingleton<SessionAuthRepository>();
+        builder.Services.AddSingleton<IAuthRepository>(sp => sp.GetRequiredService<SessionAuthRepository>());
         builder.Services.AddSingleton<NoOpSubscriptionRepository>();
         builder.Services.AddSingleton<ISubscriptionRepository>(sp => sp.GetRequiredService<NoOpSubscriptionRepository>());
 
@@ -116,6 +154,14 @@ public static class MauiProgram
         builder.Services.AddTransient<ViewModels.QrScannerViewModel>();
         builder.Services.AddTransient<PoiDetailPage>();
         builder.Services.AddTransient<ViewModels.PoiDetailViewModel>();
+
+        builder.Services.AddTransient<ViewModels.LoginViewModel>();
+        builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddSingleton<ViewModels.ProfileViewModel>();
+        builder.Services.AddTransient<ProfilePage>();
+        builder.Services.AddTransient<OwnerSubmitViewModel>();
+        builder.Services.AddTransient<OwnerToolsPage>();
+        builder.Services.AddTransient<AdminToolsPage>();
 
         builder.Services.AddTransient<MauiApp1.Application.UseCases.GetNearbyPoisUseCase>();
         builder.Services.AddTransient<MauiApp1.Application.UseCases.GetPoiDetailUseCase>();

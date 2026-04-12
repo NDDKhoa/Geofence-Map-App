@@ -104,7 +104,7 @@ This document consolidates **all** rules enforced in code (services, middleware,
 1. **Mongoose** applies **`Poi` default `status: PENDING`** if a document is inserted without `status` — **admin and seed avoid this** by setting `APPROVED` explicitly where needed.
 2. **Public visibility** treats **missing `status`** as visible — supports legacy documents.
 3. **`joi` package** is declared but **unused** in `src/` — validation is manual `if` checks.
-4. **`Poi.REJECTED`** is valid in schema but **unused** by services.
+4. **`Poi.REJECTED`** is set only via **`POST /api/v1/admin/pois/:id/reject`** (ADMIN, from **`PENDING`**).
 
 ---
 

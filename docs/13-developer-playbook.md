@@ -60,16 +60,16 @@ node src/seed.js
 
 ---
 
-## 6. Extending POI lifecycle (approve/reject)
+## 6. POI lifecycle moderation and audit (Stages 4–5)
 
-**Current gap:** No API updates **`Poi.status`** from **`PENDING`**.
+**Implemented:** **`POST /api/v1/admin/pois/:id/approve`** and **`POST /api/v1/admin/pois/:id/reject`** (`requireRole(ADMIN)`), transitions in **`poi.service`**, mandatory **`admin-poi-audit.service.recordModeration`** after each real **`PENDING` → `APPROVED`/`REJECTED`**. Read history: **`GET /api/v1/admin/pois/audits`**.
 
-**Safe extension pattern:**
+**When extending further:**
 
-1. Add **`PATCH /api/v1/pois/code/:code/status`** (example) with **`requireRole(ADMIN)`**.
-2. **Service method** validates transitions, e.g. only `PENDING` → `APPROVED` | `REJECTED`.
-3. Call **`_invalidateCache()`** after write.
-4. **Do not** bypass **`publicVisibilityFilter`** in `findNearby` / public `findByCode`.
+1. Keep **business rules in services**; controllers stay thin.
+2. Call **`_invalidateCache()`** after any POI mutation that affects public reads.
+3. **Do not** bypass **`publicVisibilityFilter`** in `findNearby` / public `findByCode`.
+4. **Do not** add PUT/PATCH/DELETE for **`AdminPoiAudit`** (append-only via API).
 
 ---
 

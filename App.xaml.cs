@@ -1,4 +1,5 @@
 using MauiApp1.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MauiApp1;
 
@@ -38,8 +39,22 @@ public partial class App : Microsoft.Maui.Controls.Application
         MainPage = services.GetRequiredService<AppShell>();
 
         StartBackgroundServices();
+        _ = RestoreAuthAsync(services);
 
         System.Diagnostics.Debug.WriteLine("[DeepLink] App constructor exit");
+    }
+
+    private static async Task RestoreAuthAsync(IServiceProvider services)
+    {
+        try
+        {
+            var auth = services.GetRequiredService<AuthService>();
+            await auth.RestoreSessionAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AUTH] RestoreAuthAsync: {ex}");
+        }
     }
 
     private void StartBackgroundServices()

@@ -23,9 +23,9 @@ POI_STATUS = Object.freeze({
 
 | Status | How it gets set |
 |--------|------------------|
-| **APPROVED** | `poi.service.createPoi` (admin POST); explicit `status` in `seed.js`; could exist on legacy data if manually inserted. |
+| **APPROVED** | `poi.service.createPoi` (admin POST); `poi.service.approvePoiById` (`POST /api/v1/admin/pois/:id/approve`); explicit `status` in `seed.js`; legacy docs with no `status` (treated as public). |
 | **PENDING** | `poi.service.createOwnerPoi` (owner POST); also default on any `Poi.create` without status (avoid in new code). |
-| **REJECTED** | **No automatic or API path** in current services. |
+| **REJECTED** | `poi.service.rejectPoiById` via `POST /api/v1/admin/pois/:id/reject` (ADMIN, from `PENDING` only). |
 
 ---
 
@@ -89,18 +89,15 @@ A POI is **publicly visible** if **either**:
 ## 6. Text state machine (`Poi` only)
 
 ```
-                    ┌─────────────────────────────────────┐
-                    │  (no API) REJECTED                  │
-                    └─────────────────────────────────────┘
-                                    ▲
-                                    │  [not implemented]
-                                    │
- [Admin POST /pois] ──► APPROVED ────┼──► publicly visible
- [Seed APPROVED]                     │
-                                    │
- [Owner POST /owner/pois] ──► PENDING ──► NOT publicly visible
-                                    │
-                                    └──► APPROVED  [no route yet]
+ [Admin POST /api/v1/pois] ──► APPROVED ─────────────────────► publicly visible
+ [Seed APPROVED]
+
+ [Owner POST /owner/pois] ──► PENDING ── NOT publicly visible
+        │
+        ├── Admin POST .../admin/pois/:id/approve ──► APPROVED ──► publicly visible
+        └── Admin POST .../admin/pois/:id/reject  ──► REJECTED ──► not public
+
+ REJECTED / PENDING (non-approved) are excluded from public POI queries.
 ```
 
 **Legacy / parallel:** `PoiRequest` uses **lowercase** `pending | approved | rejected` — separate collection; see **05-admin-flow.md**.

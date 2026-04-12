@@ -1,30 +1,30 @@
 # Docs Index (runtime-first)
 
-Mục tiêu của thư mục `docs/` là phản ánh **đúng trạng thái hiện tại của MVP**.  
-Khi có mâu thuẫn, ưu tiên các tài liệu trong nhóm **Runtime Contract** dưới đây.
+Mục tiêu của thư mục `docs/` là phản ánh **đúng trạng thái hiện tại**. Khi có mâu thuẫn, ưu tiên:
 
-## 1) Runtime Contract (Ưu tiên cao nhất)
+1. **`SYSTEM_CURRENT_STATE.md`** — tóm tắt các stage đã làm, client (`admin-web`, `web`, MAUI), và việc còn lại.
+2. **`../README.md`** (root) — bố cục monorepo và chạy nhanh từng phần.
 
-- `README.md` (root): Tổng quan hệ thống hiện tại.
-- [QR_INTEGRATED_DOCUMENT.md](file:///c:/Users/KHOA/source/repos/VN-GO-Travel2/docs/QR_INTEGRATED_DOCUMENT.md): Toàn bộ thông tin về QR, Web và Deep Link (Đã hợp nhất).
-- `docs/architecture.md`: Kiến trúc thực tế đang chạy.
-- `docs/known-issues.md`: Giới hạn và sự cố đã biết.
-- `docs/DEEP_LINK_LIMITATIONS.md`: Giới hạn deep link hiện tại.
+## 1) Runtime Contract (ưu tiên cao)
 
-## 2) Tài liệu cốt lõi (Gốc dự án)
+- [SYSTEM_CURRENT_STATE.md](SYSTEM_CURRENT_STATE.md) — handoff cho AI/dev và team.
+- [00-system-overview.md](00-system-overview.md) — backend Node: layers, env, client surfaces.
+- [05-admin-flow.md](05-admin-flow.md) — moderation + audit (Stage 4–5).
+- [07-api-reference.md](07-api-reference.md) — catalog endpoint; login trả `{ success, data }`.
+- [12-testing-guide.md](12-testing-guide.md) — `backend/tests/`, Jest + Supertest.
 
-- [ClassDiagram.md](file:///c:/Users/KHOA/source/repos/VN-GO-Travel2/ClassDiagram.md)
-- [ERD.md](file:///c:/Users/KHOA/source/repos/VN-GO-Travel2/ERD.md)
-- [SequenceDiagram.md](file:///c:/Users/KHOA/source/repos/VN-GO-Travel2/SequenceDiagram.md)
+## 2) Chủ đề cốt lõi
 
-## 3) Historical / Planning Docs (Tham khảo)
+- [01-architecture.md](01-architecture.md) … [04-owner-flow.md](04-owner-flow.md), [06-poi-lifecycle.md](06-poi-lifecycle.md)
+- [02-auth-rbac.md](02-auth-rbac.md), [03-subscription.md](03-subscription.md)
+- [08-error-model.md](08-error-model.md), [09-data-model.md](09-data-model.md), [10-business-rules.md](10-business-rules.md)
+- [11-security-model.md](11-security-model.md), [13-developer-playbook.md](13-developer-playbook.md)
 
-Các file dưới đây giữ lại để tham khảo tiến trình phát triển, có thể chứa nội dung cũ:
+## 3) QR / Map / Planning (tham khảo)
 
-- `docs/07_refactor_plan.md`
-- `docs/PHASE6_PLAN.md`
-- `docs/PRD_Culinary_Tourism_MVP.md`
-- `docs/known-issues.md` (Một số issue có thể đã fix)
+- [QR_INTEGRATED_DOCUMENT.md](QR_INTEGRATED_DOCUMENT.md), [architecture.md](architecture.md), [known-issues.md](known-issues.md)
+- [07_refactor_plan.md](07_refactor_plan.md), [PHASE6_PLAN.md](PHASE6_PLAN.md), [PRD_Culinary_Tourism_MVP.md](PRD_Culinary_Tourism_MVP.md)
 
 ---
-*Ghi chú: Các tài liệu QR nhỏ lẻ đã được hợp nhất vào `QR_INTEGRATED_DOCUMENT.md` để dễ quản lý.*
+
+*Các tài liệu QR nhỏ đã gom trong `QR_INTEGRATED_DOCUMENT.md` nếu có.*

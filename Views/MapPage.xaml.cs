@@ -148,6 +148,26 @@ public partial class MapPage : ContentPage, IQueryAttributable
                         }
                     });
 
+                    try
+                    {
+                        await _vm.SyncPoisFromServerAsync().ConfigureAwait(false);
+                        await MainThread.InvokeOnMainThreadAsync(() =>
+                        {
+                            try
+                            {
+                                DrawPois();
+                                Debug.WriteLine("[MAP-TIME] DrawPois after server sync");
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"[MAP-ERR] DrawPois after sync: {ex}");
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[MAP-ERR] SyncPoisFromServerAsync: {ex}");
+                    }
 
                     if (!string.IsNullOrWhiteSpace(pendingFocus.code))
                     {

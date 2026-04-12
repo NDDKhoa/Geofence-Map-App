@@ -243,6 +243,10 @@ public class MapViewModel : INotifyPropertyChanged
     public Task LoadPoisAsync(string? preferredLanguage = null)
         => _hydrationService.LoadPoisAsync(preferredLanguage);
 
+    /// <summary>Background pull of APPROVED POIs from API into SQLite (requires signed-in user).</summary>
+    public Task SyncPoisFromServerAsync(CancellationToken cancellationToken = default)
+        => _hydrationService.SyncPoisFromServerAsync(cancellationToken);
+
     // ─────────────────────────────────────────────────────────────────────────
     // Location polling — called by MapPage tracking loop
     // ─────────────────────────────────────────────────────────────────────────

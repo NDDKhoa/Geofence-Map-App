@@ -1,4 +1,7 @@
+const jwt = require('jsonwebtoken');
 const poiRepository = require('../repositories/poi.repository');
+const adminPoiAuditService = require('./admin-poi-audit.service');
+const AdminPoiAudit = require('../models/admin-poi-audit.model');
 const { AppError } = require('../middlewares/error.middleware');
 const Cache = require('../utils/cache');
 const config = require('../config');
@@ -53,7 +56,19 @@ class PoiService {
         }
 
         const pois = await poiRepository.findNearby(lng, lat, radius, verifiedLimit, verifiedPage);
-        const mappedPois = pois.map(poi => this.mapPoiDto(poi, 'en'));
+        const mappedPois = pois.map((poi) => {
+            const base = this.mapPoiDto(poi, 'en');
+            const c = poi.content && typeof poi.content.toObject === 'function'
+                ? poi.content.toObject()
+                : { ...(poi.content || {}) };
+            return {
+                ...base,
+                contentByLang: {
+                    vi: c.vi || '',
+                    en: c.en || ''
+                }
+            };
+        });
 
         // Store in cache
         poiCache.set(cacheKey, mappedPois);
@@ -231,6 +246,177 @@ class PoiService {
         };
     }
 
+    _mapModerationDto(poi) {
+        const content = poi.content && typeof poi.content.toObject === 'function'
+            ? poi.content.toObject()
+            : { ...(poi.content || {}) };
+        return {
+            id: poi._id,
+            code: poi.code,
+            status: poi.status ?? null,
+            rejectionReason: poi.rejectionReason ?? null,
+            submittedBy: poi.submittedBy ?? null,
+            location: {
+                lat: poi.location.coordinates[1],
+                lng: poi.location.coordinates[0]
+            },
+            content,
+            isPremiumOnly: poi.isPremiumOnly,
+            createdAt: poi.createdAt,
+            updatedAt: poi.updatedAt
+        };
+    }
+
+    async listPendingPoisForAdmin(query = {}) {
+        const page = Math.max(parseInt(query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 100);
+        const skip = (page - 1) * limit;
+
+        const [pois, total] = await Promise.all([
+            poiRepository.findPending({ limit, skip }),
+            poiRepository.countPending()
+        ]);
+
+        const totalPages = Math.ceil(total / limit) || 0;
+
+        return {
+            items: pois.map((p) => this._mapModerationDto(p)),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages
+            }
+        };
+    }
+
+    /** Paginated list of all POIs (any status) for admin master CRUD UI. */
+    async listMasterPoisForAdmin(query = {}) {
+        const page = Math.max(parseInt(query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 100);
+        const skip = (page - 1) * limit;
+
+        const [pois, total] = await Promise.all([
+            poiRepository.findAllForAdmin({ limit, skip }),
+            poiRepository.countAll()
+        ]);
+
+        const totalPages = Math.ceil(total / limit) || 0;
+
+        return {
+            items: pois.map((p) => this._mapModerationDto(p)),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages
+            }
+        };
+    }
+
+    async approvePoiById(rawId, adminUser) {
+        if (!rawId || typeof rawId !== 'string') {
+            throw new AppError('POI id is required', 400);
+        }
+        if (!poiRepository.isValidObjectId(rawId)) {
+            throw new AppError('Invalid POI id', 400);
+        }
+
+        const poi = await poiRepository.findById(rawId);
+        if (!poi) {
+            throw new AppError('POI not found', 404);
+        }
+
+        const status = poi.status;
+
+        if (status === POI_STATUS.REJECTED) {
+            throw new AppError('Cannot approve a rejected POI', 409);
+        }
+
+        if (status === POI_STATUS.APPROVED || status === undefined || status === null) {
+            return this._mapModerationDto(poi);
+        }
+
+        if (status !== POI_STATUS.PENDING) {
+            throw new AppError('POI cannot be approved from its current state', 409);
+        }
+
+        let updated = await poiRepository.transitionPendingToApproved(rawId);
+        if (!updated) {
+            const latest = await poiRepository.findById(rawId);
+            if (latest && latest.status === POI_STATUS.APPROVED) {
+                return this._mapModerationDto(latest);
+            }
+            throw new AppError('POI could not be approved', 409);
+        }
+
+        this._invalidateCache();
+        await adminPoiAuditService.recordModeration({
+            adminId: adminUser._id,
+            poiId: updated._id,
+            action: AdminPoiAudit.ACTION.APPROVE,
+            previousStatus: POI_STATUS.PENDING,
+            newStatus: POI_STATUS.APPROVED,
+            reason: null
+        });
+
+        return this._mapModerationDto(updated);
+    }
+
+    async rejectPoiById(rawId, body, adminUser) {
+        if (!rawId || typeof rawId !== 'string') {
+            throw new AppError('POI id is required', 400);
+        }
+        if (!poiRepository.isValidObjectId(rawId)) {
+            throw new AppError('Invalid POI id', 400);
+        }
+
+        const reason = body && typeof body.reason === 'string' ? body.reason.trim() : '';
+        if (!reason) {
+            throw new AppError('Rejection reason is required', 400);
+        }
+
+        const poi = await poiRepository.findById(rawId);
+        if (!poi) {
+            throw new AppError('POI not found', 404);
+        }
+
+        const status = poi.status;
+
+        if (status === POI_STATUS.REJECTED) {
+            return this._mapModerationDto(poi);
+        }
+
+        if (status === POI_STATUS.APPROVED || status === undefined || status === null) {
+            throw new AppError('Cannot reject a POI that is already public', 409);
+        }
+
+        if (status !== POI_STATUS.PENDING) {
+            throw new AppError('POI cannot be rejected from its current state', 409);
+        }
+
+        let updated = await poiRepository.transitionPendingToRejected(rawId, reason);
+        if (!updated) {
+            const latest = await poiRepository.findById(rawId);
+            if (latest && latest.status === POI_STATUS.REJECTED) {
+                return this._mapModerationDto(latest);
+            }
+            throw new AppError('POI could not be rejected', 409);
+        }
+
+        this._invalidateCache();
+        await adminPoiAuditService.recordModeration({
+            adminId: adminUser._id,
+            poiId: updated._id,
+            action: AdminPoiAudit.ACTION.REJECT,
+            previousStatus: POI_STATUS.PENDING,
+            newStatus: POI_STATUS.REJECTED,
+            reason
+        });
+
+        return this._mapModerationDto(updated);
+    }
+
     async createOwnerPoi(user, body) {
         const payload = this.validatePoiInput(body, { mode: 'owner' });
 
@@ -256,6 +442,67 @@ class PoiService {
         this._invalidateCache();
 
         return this._mapOwnerSubmittedPoi(poi);
+    }
+
+    /**
+     * ADMIN: mint short-lived JWT for QR; QR encodes scan URL with `?t=`.
+     */
+    async generateQrScanTokenForAdmin(rawPoiId) {
+        if (!rawPoiId || typeof rawPoiId !== 'string') {
+            throw new AppError('POI id is required', 400);
+        }
+        if (!poiRepository.isValidObjectId(rawPoiId)) {
+            throw new AppError('Invalid POI id', 400);
+        }
+        const doc = await poiRepository.findById(rawPoiId);
+        if (!doc) {
+            throw new AppError('POI not found', 404);
+        }
+        const token = jwt.sign(
+            {
+                poiId: String(doc._id),
+                code: doc.code,
+                type: 'qr_scan'
+            },
+            config.jwtSecret,
+            { expiresIn: config.qrScanTokenExpiresIn }
+        );
+        const scanUrl = `${config.scanQrUrlBase}?t=${encodeURIComponent(token)}`;
+        return { token, scanUrl, expiresIn: config.qrScanTokenExpiresIn };
+    }
+
+    /**
+     * Authenticated user: redeem QR JWT and return full POI when allowed.
+     */
+    async resolveQrScanToken(rawToken, user) {
+        if (!rawToken || typeof rawToken !== 'string' || !rawToken.trim()) {
+            throw new AppError('token is required', 400);
+        }
+        let decoded;
+        try {
+            decoded = jwt.verify(rawToken.trim(), config.jwtSecret);
+        } catch (e) {
+            throw new AppError('Invalid or expired QR token', 401);
+        }
+        if (decoded.type !== 'qr_scan' || !decoded.poiId) {
+            throw new AppError('Invalid QR token payload', 400);
+        }
+        const poi = await poiRepository.findById(decoded.poiId);
+        if (!poi) {
+            throw new AppError('POI not found', 404);
+        }
+        const st = poi.status;
+        if (st === POI_STATUS.PENDING || st === POI_STATUS.REJECTED) {
+            throw new AppError('POI is not available for scanning', 403);
+        }
+        if (st && st !== POI_STATUS.APPROVED) {
+            throw new AppError('POI is not available for scanning', 403);
+        }
+        if (poi.isPremiumOnly && !user.isPremium) {
+            throw new AppError('Premium subscription required for this POI', 403);
+        }
+        this._invalidateCache();
+        return this._mapModerationDto(poi);
     }
 }
 

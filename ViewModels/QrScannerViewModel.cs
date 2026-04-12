@@ -345,8 +345,9 @@ public class QrScannerViewModel : INotifyPropertyChanged
     /// <summary>Normalized key for frame-level dedupe (POI code if parseable, else trimmed raw).</summary>
     public static string GetDedupeKey(string raw)
     {
-        // TODO: Move to UseCase (Stage 4) — static helper; inject IQrScannerService at call sites if needed.
         var p = QrResolver.Parse(raw);
+        if (p.Success && p.IsSecureScanToken && !string.IsNullOrEmpty(p.ScanToken))
+            return "t:" + p.ScanToken.GetHashCode();
         return p.Success ? p.Code! : raw.Trim();
     }
 }

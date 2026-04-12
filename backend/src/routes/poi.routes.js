@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.use(protect);
 
+router.post('/scan', poiController.scan);
 router.get('/nearby', poiController.getNearby);
 router.get('/code/:code', poiController.getByCode);
 

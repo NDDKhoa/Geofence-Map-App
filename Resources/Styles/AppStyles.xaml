@@ -65,4 +65,11 @@
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="FontSize" Value="16" />
     </Style>
+
+    <!-- Entries default to invisible light-on-light on some Android themes; force contrast. -->
+    <Style TargetType="Entry">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextPrimary}, Dark={StaticResource TextOnDark}}" />
+        <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource TextSecondary}, Dark=#B0B0B0}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource SurfaceCard}, Dark=#2C2C2E}" />
+    </Style>
 </ResourceDictionary>

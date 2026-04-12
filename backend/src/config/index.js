@@ -23,7 +23,14 @@ const config = {
     },
     timeout: {
         ms: parseInt(process.env.REQUEST_TIMEOUT) || 10000, // 10 seconds
-    }
+    },
+    /** Short-lived JWT for QR payloads (`type: qr_scan`). */
+    qrScanTokenExpiresIn: process.env.QR_SCAN_TOKEN_EXPIRES_IN || '24h',
+    /**
+     * Base URL encoded into QR (no trailing slash). Query `?t=<jwt>` is appended by the service.
+     * Must match what the mobile app parses (see QrResolver scan URL).
+     */
+    scanQrUrlBase: (process.env.SCAN_QR_URL_BASE || 'https://thuyetminh.netlify.app/app/scan').replace(/\/$/, '')
 };
 
 console.log('[INIT] Configuration loaded and validated successfully');

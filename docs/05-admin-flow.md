@@ -3,9 +3,11 @@
 ## 1. What “admin” means in this codebase
 
 - **Role:** `ADMIN` (`constants/roles.js`).
-- **Enforcement:** `requireRole(ROLES.ADMIN)` on specific **`/api/v1/pois`** mutations only.
+- **Enforcement:** `requireRole(ROLES.ADMIN)` on:
+  - **`/api/v1/pois`** mutations (create / update / delete by code), and
+  - **`/api/v1/admin/pois`** moderation (approve / reject by Mongo `_id`).
 
-There is **no** separate `/api/v1/admin` router. Admin capabilities are **POI CRUD** on the main POI resource.
+**Routers:** main POI CRUD stays on **`/api/v1/pois`**. **Owner-submitted moderation** (Stage 4) uses **`/api/v1/admin/pois`**.
 
 ---
 
@@ -73,16 +75,29 @@ There is **no** separate `/api/v1/admin` router. Admin capabilities are **POI CR
 
 ---
 
-## 6. Owner-submitted POI moderation (gap)
+## 6. Owner-submitted POI moderation (Stage 4 — implemented)
 
-**Required honesty for implementers:**
+**Router:** `routes/admin-poi.routes.js`  
+**Base path:** `/api/v1/admin/pois`  
+**Middleware:** `protect` → `requireRole(ADMIN)`.
 
-- **`Poi.status`** supports `PENDING`, `APPROVED`, `REJECTED`.
-- **Owner** creates `PENDING` via `POST /api/v1/owner/pois`.
-- **There is no implemented HTTP flow** that sets `Poi.status` from `PENDING` → `APPROVED` or `REJECTED` for moderation.
-- **`Poi.REJECTED`** is a valid enum value but **no service or route** assigns it.
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/pending` | Paginated list of **`Poi`** with `status: PENDING` (moderation queue). Same DTO shape as `/master` items. |
+| GET | `/master` | Paginated list of **all** **`Poi`** documents (any status). Used by the admin-web **Manage POIs** CRUD screen. Query: `page`, `limit` (max100). |
+| GET | `/audits` | Paginated audit history (`page`, `limit`); populate admin (`email`, `role`) and poi (`code`, `content`). Newest first. |
+| POST | `/:id/approve` | `PENDING` → `APPROVED` (public visibility). Idempotent if already `APPROVED` or legacy doc with no `status`. |
+| POST | `/:id/reject` | `PENDING` → `REJECTED` with **`reason`** (required). Idempotent if already `REJECTED`. |
 
-**Planned future work (not in repo):** dedicated admin moderation endpoints or extending `updatePoiByCode` to accept `status` under strict rules.
+**Service:** `poi.service.approvePoiById` / `rejectPoiById` — state rules, cache invalidation; **`admin-poi-audit.service.recordModeration`** after each **real** transition (mandatory; `500` if insert fails). Listing: **`admin-poi-audit.service.listAudits`**.
+
+**Immutability:** no HTTP API to update or delete **`AdminPoiAudit`** rows.
+
+**Rules (summary):**
+
+- Cannot approve **`REJECTED`** POIs (`409`).
+- Cannot reject **`APPROVED`** or legacy public (no `status`) POIs (`409`).
+- **`status` is never taken from arbitrary client fields** on other routes; only these endpoints perform moderation transitions.
 
 ---
 
@@ -110,6 +125,8 @@ There is **no** separate `/api/v1/admin` router. Admin capabilities are **POI CR
 | Admin create live POI | Yes | Forces `APPROVED`. |
 | Admin update POI fields | Yes | No `status` in update. |
 | Admin delete POI | Yes | By `code`. |
-| Admin approve owner `Poi` (`PENDING`→`APPROVED`) | **No** | — |
-| Admin reject owner `Poi` | **No** | Enum exists only. |
+| Admin approve owner `Poi` (`PENDING`→`APPROVED`) | **Yes** | `POST /api/v1/admin/pois/:id/approve` |
+| Admin reject owner `Poi` | **Yes** | `POST /api/v1/admin/pois/:id/reject` + `reason` |
+| Admin list moderation audits | **Yes** | `GET /api/v1/admin/pois/audits` (pagination, populated) |
+| Admin list all POIs (master CRUD UI) | **Yes** | `GET /api/v1/admin/pois/master` (pagination; any status) |
 | Moderate `PoiRequest` | Partial | Endpoint exists; **not admin-only**. |

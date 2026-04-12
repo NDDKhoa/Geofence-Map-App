@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MauiApp1.Views.ProfilePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MauiApp1.ViewModels"
+    x:DataType="vm:ProfileViewModel"
+    Title="Tai khoan"
+    BackgroundColor="{StaticResource SurfaceBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20,16,20,120" Spacing="18">
+
+            <Border Style="{StaticResource CardBorder}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Thong tin dang nhap"
+                           Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="{Binding DisplayEmail}"
+                           FontSize="16"
+                           TextColor="{StaticResource TextPrimary}" />
+
+                    <HorizontalStackLayout Spacing="12">
+                        <Label Text="Vai tro:"
+                               Style="{StaticResource BodyText}" />
+                        <Label Text="{Binding RoleDisplay}"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource BrandPrimaryDark}" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Spacing="12">
+                        <Label Text="Goi:"
+                               Style="{StaticResource BodyText}" />
+                        <Label Text="{Binding PremiumDisplay}"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource NatureEmerald}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Dang nhap"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding LoginCommand}"
+                    IsVisible="{Binding IsNotLoggedIn}" />
+
+            <Button Text="Dang xuat"
+                    Style="{StaticResource SecondaryButton}"
+                    Command="{Binding LogoutCommand}"
+                    IsVisible="{Binding IsLoggedIn}" />
+
+            <Border Style="{StaticResource CardBorder}"
+                    IsVisible="{Binding ShowOwnerSection}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Chu dia diem (OWNER)"
+                           Style="{StaticResource SectionTitle}" />
+                    <Label Text="Mo tab 'Gui POI' ben duoi, dien form va gui — diem se o trang thai cho Admin duyet."
+                           Style="{StaticResource BodyText}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource CardBorder}"
+                    IsVisible="{Binding ShowAdminSection}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Quan tri (ADMIN)"
+                           Style="{StaticResource SectionTitle}" />
+                    <Label Text="Bang dieu khien: mo tab 'Quan tri' ben duoi (Web/API san sang)."
+                           Style="{StaticResource BodyText}" />
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

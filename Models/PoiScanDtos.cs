@@ -1,0 +1,30 @@
+namespace MauiApp1.Models;
+
+/// <summary>POST /api/v1/pois/scan response envelope.</summary>
+public sealed class PoiScanApiResponse
+{
+    public bool Success { get; set; }
+    public PoiScanData? Data { get; set; }
+}
+
+public sealed class PoiScanData
+{
+    public string? Id { get; set; }
+    public string? Code { get; set; }
+    public PoiScanLocation? Location { get; set; }
+    public PoiScanContent? Content { get; set; }
+    public bool IsPremiumOnly { get; set; }
+    public string? Status { get; set; }
+}
+
+public sealed class PoiScanLocation
+{
+    public double Lat { get; set; }
+    public double Lng { get; set; }
+}
+
+public sealed class PoiScanContent
+{
+    public string? Vi { get; set; }
+    public string? En { get; set; }
+}

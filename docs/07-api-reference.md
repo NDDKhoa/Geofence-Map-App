@@ -159,6 +159,95 @@ Unless noted, **`Content-Type: application/json`** for bodies.
 
 ---
 
+### Admin moderation — `Poi` by id (`/api/v1/admin/pois`)
+
+**Auth:** JWT + **`requireRole(ADMIN)`** on all routes below.
+
+#### `POST /api/v1/admin/pois/:id/approve`
+
+**Params:** `:id` = MongoDB **`Poi._id`** (24-char hex ObjectId).
+
+**Body:** none.
+
+**Success `200`:** moderation DTO includes `id`, `code`, `status`, `rejectionReason`, `submittedBy`, `location`, `content`, `isPremiumOnly`, timestamps.
+
+**Behavior:**
+
+- **`PENDING` → `APPROVED`** (clears `rejectionReason`); invalidates POI read cache; **persists `AdminPoiAudit`** (mandatory — `500` if audit insert fails).
+- **Idempotent:** if already **`APPROVED`** or legacy doc with **no `status`**, returns current POI **without** a new audit row (no transition).
+- **`409`** if POI is **`REJECTED`** (cannot approve).
+
+**Errors:** `400` invalid id; `404` not found; `500` audit persistence failure (rare).
+
+---
+
+#### `POST /api/v1/admin/pois/:id/reject`
+
+**Body (required):**
+
+```json
+{ "reason": "Does not meet guidelines." }
+```
+
+**Success `200`:** same moderation DTO shape; **`status: REJECTED`**, **`rejectionReason`** set.
+
+**Behavior:**
+
+- **`PENDING` → `REJECTED`** with reason; invalidates cache; **persists `AdminPoiAudit`** (mandatory — `500` if audit insert fails).
+- **Idempotent:** if already **`REJECTED`**, returns current POI **without** a new audit row.
+- **`409`** if POI is **`APPROVED`** or legacy public (no `status`).
+
+**Errors:** `400` missing/empty `reason` or invalid id; `404` not found; `500` audit persistence failure (rare).
+
+---
+
+#### `GET /api/v1/admin/pois/pending`
+
+**Query:** `page` (default `1`), `limit` (default `50`, max `100`).
+
+**Success `200`:** `{ "success": true, "data": [ ... ], "pagination": { "page", "limit", "total", "totalPages" } }`  
+Each item is a **moderation DTO**: `id`, `code`, `status`, `rejectionReason`, `submittedBy`, `location`, `content` (`en` / `vi`), `isPremiumOnly`, `createdAt`, `updatedAt`. Only rows with **`status: PENDING`**.
+
+---
+
+#### `GET /api/v1/admin/pois/master`
+
+**Query:** `page` (default `1`), `limit` (default `50`, max `100`).
+
+**Success `200`:** same envelope as `/pending`, but **`data`** includes **every** `Poi` regardless of `status` (sorted by `updatedAt` descending). Intended for the admin-web **Manage POIs** table (CRUD alongside `POST/PUT/DELETE /api/v1/pois`).
+
+---
+
+#### `GET /api/v1/admin/pois/audits`
+
+**Query:** `page` (default `1`), `limit` (default `20`, max `100`).
+
+**Success `200`:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "action": "APPROVE",
+      "previousStatus": "PENDING",
+      "newStatus": "APPROVED",
+      "reason": null,
+      "createdAt": "...",
+      "updatedAt": "...",
+      "admin": { "id": "...", "email": "admin@vngo.com", "role": "ADMIN" },
+      "poi": { "id": "...", "code": "X", "content": { "en": "...", "vi": "..." } }
+    }
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 1, "totalPages": 1 }
+}
+```
+
+Sorted by **`createdAt`** descending. **No** update/delete endpoints exist for audits.
+
+---
+
 ## 3. POI requests (`/api/v1/poi-requests`)
 
 **Router middleware:** `protect` on all routes. **No `requireRole`.**

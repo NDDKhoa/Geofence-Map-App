@@ -109,4 +109,6 @@
 
 - **Stage 1 (RBAC):** Implemented as documented in `02-auth-rbac.md`.
 - **Stage 2 (Subscription):** Flag + middleware + service; **no billing**.
-- **Stage 3 (Owner POI):** Submission + **PENDING**; **admin approval of `Poi` not implemented** — see `05-admin-flow.md`.
+- **Stage 3 (Owner POI):** Submission + **PENDING** — see `04-owner-flow.md`.
+- **Stage 4 (Admin moderation):** **`POST /api/v1/admin/pois/:id/approve`** / **`reject`** — **ADMIN** only; see `05-admin-flow.md`.
+- **Stage 5 (Audit log):** **`GET /api/v1/admin/pois/audits`** — **ADMIN** only; append-only audit rows from moderation transitions; no update/delete API.

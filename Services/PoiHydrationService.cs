@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text.Json;
 using MauiApp1.ApplicationContracts.Repositories;
 using MauiApp1.ApplicationContracts.Services;
 using MauiApp1.Models;
@@ -17,11 +18,15 @@ namespace MauiApp1.Services;
 /// </summary>
 public class PoiHydrationService
 {
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
     private readonly IPoiQueryRepository _poiQuery;
     private readonly IPoiCommandRepository _poiCommand;
     private readonly ILocalizationService _locService;
     private readonly IPreferredLanguageService _languagePrefs;
     private readonly AppState _appState;
+    private readonly ApiService? _api;
+    private readonly AuthService? _auth;
     private readonly SemaphoreSlim _loadGate = new(1, 1);
 
     public PoiHydrationService(
@@ -29,13 +34,17 @@ public class PoiHydrationService
         IPoiCommandRepository poiCommand,
         ILocalizationService locService,
         IPreferredLanguageService languagePrefs,
-        AppState appState)
+        AppState appState,
+        ApiService api,
+        AuthService auth)
     {
         _poiQuery = poiQuery;
         _poiCommand = poiCommand;
         _locService = locService;
         _languagePrefs = languagePrefs;
         _appState = appState;
+        _api = api;
+        _auth = auth;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -160,6 +169,125 @@ public class PoiHydrationService
         {
             _loadGate.Release();
         }
+    }
+
+    /// <summary>
+    /// Pull APPROVED POIs from <c>GET /pois/nearby</c> (large radius), upsert SQLite + dynamic translations.
+    /// No-op when not signed in or API unavailable.
+    /// </summary>
+    public async Task SyncPoisFromServerAsync(CancellationToken cancellationToken = default)
+    {
+        if (_auth?.IsAuthenticated != true || _api == null)
+        {
+            Debug.WriteLine("[SYNC] Skip: not authenticated or API missing");
+            return;
+        }
+
+        try
+        {
+            await _poiQuery.InitAsync(cancellationToken).ConfigureAwait(false);
+            await _locService.InitializeAsync(cancellationToken).ConfigureAwait(false);
+
+            // Vietnam-wide bbox approximation via single geospatial query (meters).
+            const double lat = 16.0;
+            const double lng = 107.5;
+            const int radiusM = 1_800_000;
+            var url = $"pois/nearby?lat={lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}&lng={lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}&radius={radiusM}&limit=50&page=1";
+
+            using var resp = await _api.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            var text = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"[SYNC] HTTP {(int)resp.StatusCode}: {text}");
+                return;
+            }
+
+            using var doc = JsonDocument.Parse(text);
+            if (!doc.RootElement.TryGetProperty("data", out var dataEl) || dataEl.ValueKind != JsonValueKind.Array)
+            {
+                Debug.WriteLine("[SYNC] Missing data array");
+                return;
+            }
+
+            var n = 0;
+            foreach (var el in dataEl.EnumerateArray())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var row = JsonSerializer.Deserialize<NearbySyncItem>(el.GetRawText(), JsonOpts);
+                if (row?.Code == null || row.Location == null) continue;
+                var code = row.Code.Trim().ToUpperInvariant();
+
+                var poi = new Poi
+                {
+                    Id = code,
+                    Code = code,
+                    Latitude = row.Location.Lat,
+                    Longitude = row.Location.Lng,
+                    Radius = 50,
+                    Priority = 1
+                };
+                await _poiCommand.UpsertAsync(poi, cancellationToken).ConfigureAwait(false);
+
+                var vi = row.ContentByLang?.Vi?.Trim();
+                var en = row.ContentByLang?.En?.Trim();
+                if (string.IsNullOrEmpty(vi) && !string.IsNullOrEmpty(row.Content))
+                    vi = row.Content.Trim();
+                if (string.IsNullOrEmpty(en) && !string.IsNullOrEmpty(row.Content))
+                    en = row.Content.Trim();
+
+                void Reg(string lang, string? t)
+                {
+                    if (string.IsNullOrWhiteSpace(t)) return;
+                    var s = t.Trim();
+                    _locService.RegisterDynamicTranslation(code, lang, new PoiLocalization
+                    {
+                        Code = code,
+                        LanguageCode = lang,
+                        Name = s,
+                        Summary = s,
+                        NarrationShort = s,
+                        NarrationLong = s
+                    });
+                }
+
+                Reg("vi", vi);
+                Reg("en", en);
+                n++;
+            }
+
+            Debug.WriteLine($"[SYNC] Upserted {n} POI row(s) from server");
+
+            var targetLang = _appState.CurrentLanguage;
+            var poisFromDb = await _poiQuery.GetAllAsync(cancellationToken).ConfigureAwait(false);
+            var hydrated = poisFromDb
+                .Select(p => CreateHydratedPoi(p, _locService.GetLocalizationResult(p.Code, targetLang)))
+                .ToList();
+            await RefreshPoisCollectionAsync(hydrated).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[SYNC] Failed: {ex.Message}");
+        }
+    }
+
+    private sealed class NearbySyncItem
+    {
+        public string? Code { get; set; }
+        public string? Content { get; set; }
+        public NearbyLoc? Location { get; set; }
+        public NearbyLang? ContentByLang { get; set; }
+    }
+
+    private sealed class NearbyLoc
+    {
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+    }
+
+    private sealed class NearbyLang
+    {
+        public string? Vi { get; set; }
+        public string? En { get; set; }
     }
 
 }

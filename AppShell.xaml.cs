@@ -7,30 +7,33 @@ namespace MauiApp1;
 public partial class AppShell : Shell
 {
     private readonly DeepLinkCoordinator? _deepLinkCoordinator;
+    private readonly AuthService _auth;
+    private ShellContent? _ownerTab;
+    private ShellContent? _adminTab;
 
     public AppShell(IServiceProvider services)
     {
         InitializeComponent();
 
         _deepLinkCoordinator = services.GetService<DeepLinkCoordinator>();
+        _auth = services.GetRequiredService<AuthService>();
 
         var tabBar = new TabBar();
 
         tabBar.Items.Add(new ShellContent
         {
-            Title = "Khám phá",
+            Title = "Kham pha",
             Route = "explore",
             ContentTemplate = new DataTemplate(() => services.GetRequiredService<ExplorePage>())
         });
 
         tabBar.Items.Add(new ShellContent
         {
-            Title = "Bản đồ",
+            Title = "Ban do",
             Route = "map",
             ContentTemplate = new DataTemplate(() => services.GetRequiredService<MapPage>())
         });
 
-        // QR tab
         tabBar.Items.Add(new ShellContent
         {
             Title = "QR",
@@ -40,22 +43,60 @@ public partial class AppShell : Shell
 
         tabBar.Items.Add(new ShellContent
         {
-            Title = "Giới thiệu",
+            Title = "Tai khoan",
+            Route = "profile",
+            ContentTemplate = new DataTemplate(() => services.GetRequiredService<ProfilePage>())
+        });
+
+        _ownerTab = new ShellContent
+        {
+            Title = "Gui POI",
+            Route = "ownertools",
+            ContentTemplate = new DataTemplate(() => services.GetRequiredService<OwnerToolsPage>())
+        };
+        _ownerTab.IsVisible = false;
+        tabBar.Items.Add(_ownerTab);
+
+        _adminTab = new ShellContent
+        {
+            Title = "Quan tri",
+            Route = "admintools",
+            ContentTemplate = new DataTemplate(() => services.GetRequiredService<AdminToolsPage>())
+        };
+        _adminTab.IsVisible = false;
+        tabBar.Items.Add(_adminTab);
+
+        tabBar.Items.Add(new ShellContent
+        {
+            Title = "Gioi thieu",
             Route = "about",
             ContentTemplate = new DataTemplate(() => services.GetRequiredService<AboutPage>())
         });
 
         Items.Add(tabBar);
 
-        // Stack push for POI detail (tab "qrscan" is already declared on TabBar; do not RegisterRoute the same name).
         Routing.RegisterRoute("poidetail", typeof(PoiDetailPage));
+
+        _auth.SessionChanged += (_, _) => MainThread.BeginInvokeOnMainThread(UpdateRoleTabs);
+        _auth.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(AuthService.IsOwner) or nameof(AuthService.IsAdmin) or nameof(AuthService.IsAuthenticated))
+                MainThread.BeginInvokeOnMainThread(UpdateRoleTabs);
+        };
+        UpdateRoleTabs();
+    }
+
+    private void UpdateRoleTabs()
+    {
+        if (_ownerTab != null)
+            _ownerTab.IsVisible = _auth.IsAuthenticated && _auth.IsOwner;
+        if (_adminTab != null)
+            _adminTab.IsVisible = _auth.IsAuthenticated && _auth.IsAdmin;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        // Warm deep links are dispatched from MainActivity -> DeepLinkCoordinator. Re-check here
-        // in case an intent arrived before Shell was first ready (no duplicate one-shot gate).
         System.Diagnostics.Debug.WriteLine("[DL-DISPATCH] AppShell OnAppearing");
         _deepLinkCoordinator?.OnShellAppeared();
     }

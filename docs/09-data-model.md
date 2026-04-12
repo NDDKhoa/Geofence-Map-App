@@ -42,6 +42,7 @@
 | `isPremiumOnly` | Boolean | default `false` | Exposed in public DTO. |
 | `status` | String | enum `PENDING` \| `APPROVED` \| `REJECTED`, default `PENDING` | From `constants/poi-status.js`. |
 | `submittedBy` | ObjectId ref `User` | default `null` | Owner submissions set to submitter. |
+| `rejectionReason` | String | optional, max 2000 | Set when status is `REJECTED` (admin moderation). |
 | `createdAt` | Date | auto | |
 | `updatedAt` | Date | auto | |
 
@@ -55,7 +56,25 @@
 
 ---
 
-## 3. Collection: `poirequests` (model `PoiRequest`)
+## 3. Collection: `adminpoiaudits` (model `AdminPoiAudit`)
+
+**File:** `models/admin-poi-audit.model.js`
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `poiId` | ObjectId ref `Poi` | required, indexed |
+| `adminId` | ObjectId ref `User` | required, indexed |
+| `action` | String | `APPROVE` \| `REJECT` |
+| `previousStatus` | String | optional |
+| `newStatus` | String | optional |
+| `reason` | String | optional (reject) |
+| `createdAt` / `updatedAt` | Date | `timestamps: true` |
+
+Written by **`admin-poi-audit.service.recordModeration`** after each successful **`PENDING` → `APPROVED` / `REJECTED`** transition (not on idempotent no-op responses). **API surface is read-only** (GET list for ADMIN only); no PUT/PATCH/DELETE for audit documents.
+
+---
+
+## 4. Collection: `poirequests` (model `PoiRequest`)
 
 **File:** `models/poi-request.model.js`  
 Mongoose default collection name: lowercase plural of model name → **`poirequests`**.
@@ -77,7 +96,7 @@ Mongoose default collection name: lowercase plural of model name → **`poireque
 
 ---
 
-## 4. Relationships (logical)
+## 5. Relationships (logical)
 
 ```
 User 1 ──* Poi           (Poi.submittedBy → User._id, optional)
@@ -88,9 +107,9 @@ No Mongoose `populate()` is used in repositories for these references in current
 
 ---
 
-## 5. Repository operations (query surface)
+## 6. Repository operations (query surface)
 
-### 5.1 `user.repository.js`
+### 6.1 `user.repository.js`
 
 | Method | Operation |
 |--------|-----------|
@@ -99,17 +118,27 @@ No Mongoose `populate()` is used in repositories for these references in current
 | `updatePremiumStatus(userId, isPremium)` | `findByIdAndUpdate` |
 | `createUser(userData)` | `User.create` (seeder) |
 
-### 5.2 `poi.repository.js`
+### 6.2 `poi.repository.js`
 
 | Method | Operation |
 |--------|-----------|
 | `findNearby` | `find` with `$and` [visibility, `$near`] |
 | `findByCode(code, { publicOnly })` | `findOne` with optional visibility |
+| `findById(id)` | `findById` (validates ObjectId shape) |
+| `transitionPendingToApproved(id)` | `findOneAndUpdate` filter `status: PENDING` |
+| `transitionPendingToRejected(id, reason)` | `findOneAndUpdate` filter `status: PENDING` |
 | `create(data)` | `Poi.create` |
 | `updateByCode(code, update)` | `findOneAndUpdate`, `runValidators: true` |
 | `deleteByCode(code)` | `findOneAndDelete` |
 
-### 5.3 `poi-request.repository.js`
+### 6.3 `admin-poi-audit.repository.js`
+
+| Method | Operation |
+|--------|-----------|
+| `create(entry)` | `AdminPoiAudit.create` |
+| `findPaginated({ page, limit })` | `find` + `populate(adminId: email,role; poiId: code,content)` + `sort(createdAt desc)` + skip/limit; `countDocuments` |
+
+### 6.4 `poi-request.repository.js`
 
 | Method | Operation |
 |--------|-----------|
@@ -119,17 +148,17 @@ No Mongoose `populate()` is used in repositories for these references in current
 
 ---
 
-## 6. Seed script data
+## 7. Seed script data
 
 **File:** `seed.js`
 
-- Deletes **`User`**, **`Poi`**, **`PoiRequest`** then inserts:
+- Deletes **`User`**, **`Poi`**, **`PoiRequest`**, **`AdminPoiAudit`** then inserts:
   - Users: `test@vngo.com` (USER), `admin@vngo.com` (ADMIN), `owner@vngo.com` (OWNER); password **`password123`**.
   - Five POIs with **`status: APPROVED`**, **`submittedBy: null`**.
 
 ---
 
-## 7. Constants (non-persistent)
+## 8. Constants (non-persistent)
 
 | File | Exports |
 |------|---------|

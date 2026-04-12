@@ -146,7 +146,7 @@ This applies regardless of `Poi.status` (pending submissions block the code).
 [Owner submits POST /owner/pois]
         → Poi.status = PENDING
         → Visible in public nearby/detail? NO (filtered out)
-        → Admin approves via Poi API? NOT IMPLEMENTED (see 05-admin-flow.md)
+        → Admin approves/rejects via POST /api/v1/admin/pois/:id/approve|reject (see 05-admin-flow.md)
 ```
 
 ---

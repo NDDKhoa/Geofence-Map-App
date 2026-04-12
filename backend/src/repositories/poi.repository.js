@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Poi = require('../models/poi.model');
 const { POI_STATUS } = require('../constants/poi-status');
 
@@ -56,6 +57,55 @@ class PoiRepository {
 
     async deleteByCode(code) {
         return await Poi.findOneAndDelete({ code });
+    }
+
+    isValidObjectId(id) {
+        return mongoose.Types.ObjectId.isValid(id);
+    }
+
+    async findById(id) {
+        if (!this.isValidObjectId(id)) {
+            return null;
+        }
+        return await Poi.findById(id);
+    }
+
+    async findPending({ limit, skip }) {
+        return await Poi.find({ status: POI_STATUS.PENDING })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+    }
+
+    async countPending() {
+        return await Poi.countDocuments({ status: POI_STATUS.PENDING });
+    }
+
+    async findAllForAdmin({ limit, skip }) {
+        return await Poi.find({})
+            .sort({ updatedAt: -1 })
+            .skip(skip)
+            .limit(limit);
+    }
+
+    async countAll() {
+        return await Poi.countDocuments({});
+    }
+
+    async transitionPendingToApproved(id) {
+        return await Poi.findOneAndUpdate(
+            { _id: id, status: POI_STATUS.PENDING },
+            { $set: { status: POI_STATUS.APPROVED, rejectionReason: null } },
+            { new: true, runValidators: true }
+        );
+    }
+
+    async transitionPendingToRejected(id, reason) {
+        return await Poi.findOneAndUpdate(
+            { _id: id, status: POI_STATUS.PENDING },
+            { $set: { status: POI_STATUS.REJECTED, rejectionReason: reason } },
+            { new: true, runValidators: true }
+        );
     }
 }
 

@@ -11,7 +11,7 @@ This document describes the **VN-GO Travel backend** (`backend/`), a **Node.js +
 - **Gate** selected routes by **premium** flag (`User.isPremium`).
 - **Expose POIs** for nearby search and lookup by code, with **visibility rules** tied to `Poi.status`.
 - **Allow owners** to submit new POIs that start in **`PENDING`** moderation state.
-- **Allow admins** to create, update, and delete POIs via dedicated routes (admin-created POIs are stored as **`APPROVED`** immediately).
+- **Allow admins** to create, update, and delete POIs via dedicated routes (admin-created POIs are stored as **`APPROVED`** immediately), and to **approve or reject** owner-submitted **`PENDING`** POIs via **`/api/v1/admin/pois`**.
 - **Support a separate legacy flow** (`PoiRequest` collection) for user-submitted requests with lowercase status values (`pending` / `approved` / `rejected`).
 
 ---
@@ -86,14 +86,24 @@ Declared in `backend/package.json`: `express`, `mongoose`, `jsonwebtoken`, `bcry
 
 ## 7. Known product gaps (accurate to code)
 
-- There is **no** dedicated **ADMIN** HTTP endpoint that transitions a **`Poi`** from **`PENDING`** (owner submission) to **`APPROVED`** or **`REJECTED`**. **`Poi.REJECTED`** exists in the schema but **no service method** sets it.
+- **`Poi`** moderation is implemented at **`POST /api/v1/admin/pois/:id/approve`** and **`POST /api/v1/admin/pois/:id/reject`** (see **05-admin-flow.md**).
 - **`PUT /api/v1/poi-requests/:id/status`** updates **`PoiRequest`** documents and is **not** restricted to `ADMIN` in routes (any authenticated user can call it if they know the id).
 
-These are implementation facts, not future intentions; see **05-admin-flow.md** and **11-security-model.md**.
+These are implementation facts; see **05-admin-flow.md** and **11-security-model.md**.
 
 ---
 
-## 8. Cross-references
+## 8. Client applications (same monorepo)
+
+| Path | Stack | Role | Backend usage |
+|------|-------|------|----------------|
+| **`admin-web/`** | Vite + React | **ADMIN only** (login rejected for USER/OWNER) | `POST /api/v1/auth/login` (JWT), `GET /api/v1/admin/pois/pending`, `POST .../approve`, `POST .../reject`, `GET .../audits`. Dev usually port **5174** with Vite proxy to API. |
+| **`web/`** | Vite + vanilla JS | Public landing | Read-only: `GET /api/v1/pois/code/:code` (+ optional `lang`). |
+| **`MauiApp1/`** (repo root) | .NET MAUI | End-user app: **USER / OWNER / ADMIN** login via same auth API | `POST /api/v1/auth/login`; response envelope **`{ "success": true, "data": { "token", "user" } }`**. Android physical device → PC **LAN IP** or **`adb reverse`** (see **`Configuration/BackendApiConfiguration.cs`**). |
+
+---
+
+## 9. Cross-references
 
 | Topic | Document |
 |-------|-----------|

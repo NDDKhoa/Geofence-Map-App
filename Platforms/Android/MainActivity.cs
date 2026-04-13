@@ -1,4 +1,4 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
@@ -10,6 +10,7 @@ namespace MauiApp1
     [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
     [IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable }, DataScheme = "https", DataHost = "thuyetminh.netlify.app", DataPathPrefix = "/poi/")]
     [IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable }, DataScheme = "https", DataHost = "thuyetminh.netlify.app", DataPathPrefix = "/p/")]
+    [IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable }, DataScheme = "https", DataHost = "thuyetminh.netlify.app", DataPathPrefix = "/scan")]
     public class MainActivity : MauiAppCompatActivity
     {
         const string Tag = "DLINK";
@@ -43,52 +44,46 @@ namespace MauiApp1
         {
             try
             {
-                if (intent?.Action != Intent.ActionView)
+                if (intent == null || intent.Action != Intent.ActionView)
                 {
-                    Log.Debug(Tag, $"{source} - Ignore non-VIEW intent");
-                    global::System.Diagnostics.Debug.WriteLine($"[DL-ACT] {source} ignored: not ActionView");
+                    global::System.Diagnostics.Debug.WriteLine($"[DL-ACT] {source} ignored: null or not ActionView");
                     return;
                 }
 
                 var raw = intent.DataString;
-                Log.Debug(Tag, $"{source} - HandleIntent raw={raw}");
                 if (string.IsNullOrWhiteSpace(raw))
                 {
-                    Log.Debug(Tag, $"{source} - VIEW intent but empty DataString");
-                    global::System.Diagnostics.Debug.WriteLine($"[DL-ACT] {source} VIEW but empty DataString");
+                    global::System.Diagnostics.Debug.WriteLine($"[DL-ACT] {source} ignored: empty DataString");
                     return;
                 }
 
-                var mauiApp = Application as MauiApplication;
-                var services = mauiApp?.Services;
-                if (services == null)
+                if (Application is not MauiApplication mauiApp || mauiApp.Services == null)
                 {
-                    Log.Warn(Tag, "MAUI services not available to store pending deep link");
-                    global::System.Diagnostics.Debug.WriteLine("[DL-ERR] MAUI services null in HandleIntent");
+                    global::System.Diagnostics.Debug.WriteLine("[DL-ERR] MAUI services unavailable");
                     return;
                 }
 
-                var pending = services.GetService(typeof(PendingDeepLinkStore)) as PendingDeepLinkStore;
+                var services = mauiApp.Services;
+                var pending = services.GetService<PendingDeepLinkStore>();
+                var coordinator = services.GetService<DeepLinkCoordinator>();
+
                 if (pending == null)
                 {
-                    Log.Warn(Tag, "PendingDeepLinkStore not registered");
                     global::System.Diagnostics.Debug.WriteLine("[DL-ERR] PendingDeepLinkStore not registered");
                     return;
                 }
 
-                var coordinator = services.GetService(typeof(DeepLinkCoordinator)) as DeepLinkCoordinator;
-
                 var isWarm = source == "OnNewIntent";
                 pending.SetPendingLink(raw, isWarm: isWarm);
-                global::System.Diagnostics.Debug.WriteLine($"[DL-ACT] {source} queued uri={raw} isWarm={isWarm} (store updated)");
-                Log.Debug(Tag, $"{source} - Stored pending deep link: {raw} (isWarm={isWarm})");
-
+                
+                global::System.Diagnostics.Debug.WriteLine($"[DL-ACT] {source} queued uri={raw} isWarm={isWarm}");
+                
+                // Trigger the coordinator to attempt immediate dispatch if warm
                 coordinator?.OnAndroidViewIntent(raw, source, isWarm);
             }
             catch (Exception ex)
             {
-                Log.Error(Tag, $"HandleIntent failed: {ex}");
-                global::System.Diagnostics.Debug.WriteLine($"[DL-ERR] HandleIntent: {ex}");
+                global::System.Diagnostics.Debug.WriteLine($"[DL-ERR] HandleIntent ({source}): {ex.Message}");
             }
         }
     }

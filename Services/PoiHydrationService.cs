@@ -223,26 +223,36 @@ public class PoiHydrationService
                     Code = code,
                     Latitude = row.Location.Lat,
                     Longitude = row.Location.Lng,
-                    Radius = 50,
-                    Priority = 1
+                    Radius = row.Radius > 0 ? row.Radius : 50,
+                    Priority = row.Priority > 0 ? row.Priority : 1
                 };
                 await _poiCommand.UpsertAsync(poi, cancellationToken).ConfigureAwait(false);
 
-                var vi = row.ContentByLang?.Vi?.Trim();
-                var en = row.ContentByLang?.En?.Trim();
-                if (string.IsNullOrEmpty(vi) && !string.IsNullOrEmpty(row.Content))
-                    vi = row.Content.Trim();
-                if (string.IsNullOrEmpty(en) && !string.IsNullOrEmpty(row.Content))
-                    en = row.Content.Trim();
-
-                void Reg(string lang, string? t)
+                // Prefer structured fields from backend (new model).
+                if (!string.IsNullOrWhiteSpace(row.Name) ||
+                    !string.IsNullOrWhiteSpace(row.Summary) ||
+                    !string.IsNullOrWhiteSpace(row.NarrationShort) ||
+                    !string.IsNullOrWhiteSpace(row.NarrationLong))
                 {
-                    if (string.IsNullOrWhiteSpace(t)) return;
-                    _locService.RegisterDynamicTranslation(code, lang, PoiServerContentParser.BuildLocalization(code, lang, t));
+                    _locService.RegisterDynamicTranslation(code, "vi", new PoiLocalization
+                    {
+                        Code = code,
+                        LanguageCode = "vi",
+                        Name = row.Name?.Trim() ?? "",
+                        Summary = row.Summary?.Trim() ?? "",
+                        NarrationShort = row.NarrationShort?.Trim() ?? "",
+                        NarrationLong = row.NarrationLong?.Trim() ?? ""
+                    });
                 }
-
-                Reg("vi", vi);
-                Reg("en", en);
+                else
+                {
+                    // Legacy fallback for old API shape where only content/contentByLang exists.
+                    var vi = row.ContentByLang?.Vi?.Trim();
+                    if (string.IsNullOrEmpty(vi) && !string.IsNullOrEmpty(row.Content))
+                        vi = row.Content.Trim();
+                    if (!string.IsNullOrWhiteSpace(vi))
+                        _locService.RegisterDynamicTranslation(code, "vi", PoiServerContentParser.BuildLocalization(code, "vi", vi));
+                }
                 n++;
             }
 
@@ -267,6 +277,12 @@ public class PoiHydrationService
         public string? Content { get; set; }
         public NearbyLoc? Location { get; set; }
         public NearbyLang? ContentByLang { get; set; }
+        public double Radius { get; set; }
+        public int Priority { get; set; }
+        public string? Name { get; set; }
+        public string? Summary { get; set; }
+        public string? NarrationShort { get; set; }
+        public string? NarrationLong { get; set; }
     }
 
     private sealed class NearbyLoc

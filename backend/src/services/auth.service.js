@@ -44,9 +44,56 @@ class AuthService {
             user: {
                 id: user._id,
                 email: user.email,
+                fullName: user.fullName || '',
                 role: user.role ?? ROLES.USER,
                 isPremium: user.isPremium,
-                isActive: user.isActive !== false
+                isActive: user.isActive !== false,
+                qrScanCount: Number(user.qrScanCount || 0)
+            },
+            token
+        };
+    }
+
+    async register(email, password, fullName = '') {
+        if (!email || !password) {
+            throw new AppError('Please provide email and password', 400);
+        }
+
+        if (typeof email !== 'string' || typeof password !== 'string') {
+            throw new AppError('Email and password must be strings', 400);
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const emailRegex = /^\S+@\S+\.\S+$/;
+        if (!emailRegex.test(normalizedEmail)) {
+            throw new AppError('Invalid email format', 400);
+        }
+
+        if (password.length < 6) {
+            throw new AppError('Password must be at least 6 characters', 400);
+        }
+
+        const existed = await userRepository.findByEmail(normalizedEmail);
+        if (existed) {
+            throw new AppError('Email already exists', 409);
+        }
+
+        const created = await userRepository.createDefaultUser({
+            email: normalizedEmail,
+            password,
+            fullName: String(fullName || '').trim()
+        });
+
+        const token = this.signToken(created._id);
+        return {
+            user: {
+                id: created._id,
+                email: created.email,
+                fullName: created.fullName || '',
+                role: created.role ?? ROLES.USER,
+                isPremium: created.isPremium === true,
+                isActive: created.isActive !== false,
+                qrScanCount: Number(created.qrScanCount || 0)
             },
             token
         };

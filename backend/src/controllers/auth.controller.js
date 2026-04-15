@@ -14,3 +14,16 @@ exports.login = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.register = async (req, res, next) => {
+    try {
+        const { email, password, fullName } = req.body;
+        const result = await authService.register(email, password, fullName);
+        res.status(201).json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};

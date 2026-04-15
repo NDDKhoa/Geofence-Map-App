@@ -7,26 +7,39 @@ using Microsoft.Maui.Controls;
 
 namespace MauiApp1.ViewModels;
 
-public sealed class LoginViewModel : INotifyPropertyChanged
+public sealed class RegisterViewModel : INotifyPropertyChanged
 {
     private readonly AuthService _auth;
     private readonly INavigationService _nav;
     private readonly IServiceProvider _services;
 
+    private string _fullName = "";
     private string _email = "";
     private string _password = "";
+    private string _confirmPassword = "";
     private bool _isBusy;
     private string? _errorMessage;
 
-    public LoginViewModel(AuthService auth, INavigationService nav, IServiceProvider services)
+    public RegisterViewModel(AuthService auth, INavigationService nav, IServiceProvider services)
     {
         _auth = auth;
         _nav = nav;
         _services = services;
-        LoginCommand = new Command(ExecuteLogin, () => !IsBusy);
+        RegisterCommand = new Command(ExecuteRegister, () => !IsBusy);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string FullName
+    {
+        get => _fullName;
+        set
+        {
+            if (_fullName == value) return;
+            _fullName = value;
+            OnPropertyChanged();
+        }
+    }
 
     public string Email
     {
@@ -50,6 +63,17 @@ public sealed class LoginViewModel : INotifyPropertyChanged
         }
     }
 
+    public string ConfirmPassword
+    {
+        get => _confirmPassword;
+        set
+        {
+            if (_confirmPassword == value) return;
+            _confirmPassword = value;
+            OnPropertyChanged();
+        }
+    }
+
     public bool IsBusy
     {
         get => _isBusy;
@@ -59,7 +83,7 @@ public sealed class LoginViewModel : INotifyPropertyChanged
             _isBusy = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsNotBusy));
-            (LoginCommand as Command)?.ChangeCanExecute();
+            (RegisterCommand as Command)?.ChangeCanExecute();
         }
     }
 
@@ -79,23 +103,39 @@ public sealed class LoginViewModel : INotifyPropertyChanged
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
-    public ICommand LoginCommand { get; }
+    public ICommand RegisterCommand { get; }
 
-    private void ExecuteLogin()
+    private void ExecuteRegister()
     {
         if (IsBusy) return;
-        _ = LoginCoreAsync();
+        _ = RegisterCoreAsync();
     }
 
-
-    private async Task LoginCoreAsync()
+    private async Task RegisterCoreAsync()
     {
+        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = "Nhap email va mat khau.";
+            return;
+        }
+
+        if (Password.Length < 6)
+        {
+            ErrorMessage = "Mat khau toi thieu 6 ky tu.";
+            return;
+        }
+
+        if (!string.Equals(Password, ConfirmPassword, StringComparison.Ordinal))
+        {
+            ErrorMessage = "Nhap lai mat khau khong khop.";
+            return;
+        }
+
         IsBusy = true;
         ErrorMessage = null;
-
         try
         {
-            var (ok, err) = await _auth.LoginAsync(Email, Password).ConfigureAwait(false);
+            var (ok, err) = await _auth.RegisterAsync(Email, Password, FullName).ConfigureAwait(false);
 
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
@@ -106,7 +146,9 @@ public sealed class LoginViewModel : INotifyPropertyChanged
                 }
 
                 Password = "";
+                ConfirmPassword = "";
                 OnPropertyChanged(nameof(Password));
+                OnPropertyChanged(nameof(ConfirmPassword));
             }).ConfigureAwait(false);
 
             if (ok)
@@ -129,3 +171,4 @@ public sealed class LoginViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
+

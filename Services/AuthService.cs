@@ -164,6 +164,52 @@ public sealed class AuthService : INotifyPropertyChanged
         }
     }
 
+    public async Task<(bool ok, string? errorMessage)> RegisterAsync(string email, string password, string? fullName = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            return (false, "Nhap email va mat khau.");
+
+        try
+        {
+            var body = new RegisterRequestDto
+            {
+                FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName.Trim(),
+                Email = email.Trim(),
+                Password = password
+            };
+            var response = await _loginHttpClient.PostAsJsonAsync("auth/register", body, JsonOptions, cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await TryReadErrorAsync(response, cancellationToken).ConfigureAwait(false);
+                return (false, err ?? $"Dang ky that bai ({(int)response.StatusCode}).");
+            }
+
+            var envelope = await response.Content.ReadFromJsonAsync<LoginApiEnvelope>(JsonOptions, cancellationToken).ConfigureAwait(false);
+            var dto = envelope?.Data;
+            if (dto?.Token == null || dto.User == null)
+                return (false, "Phan hoi may chu khong hop le.");
+
+            await PersistSessionAsync(dto.Token, dto.User, cancellationToken).ConfigureAwait(false);
+            ApplySession(dto.Token, dto.User.Email, dto.User.Role ?? "USER", dto.User.IsPremium, dto.User.Id, raiseSessionChanged: true);
+            return (true, null);
+        }
+        catch (HttpRequestException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AUTH] RegisterAsync network: {ex}");
+            return (false, "Khong ket noi duoc may chu. Kiem tra mang va dia chi API.");
+        }
+        catch (TaskCanceledException)
+        {
+            return (false, "Het thoi gian. Thu lai.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AUTH] RegisterAsync: {ex}");
+            return (false, "Loi khong xac dinh.");
+        }
+    }
+
     public Task LogoutAsync(CancellationToken cancellationToken = default)
         => ClearSessionAsync(notify: true);
 
@@ -262,7 +308,13 @@ public sealed class AuthService : INotifyPropertyChanged
             if (doc.RootElement.TryGetProperty("message", out var msg))
                 return msg.GetString();
             if (doc.RootElement.TryGetProperty("error", out var err))
-                return err.GetString();
+            {
+                if (err.ValueKind == JsonValueKind.String)
+                    return err.GetString();
+                if (err.ValueKind == JsonValueKind.Object &&
+                    err.TryGetProperty("message", out var nested))
+                    return nested.GetString();
+            }
         }
         catch
         {

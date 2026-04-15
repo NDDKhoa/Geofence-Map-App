@@ -8,10 +8,8 @@ import {
   updatePoiByCode,
 } from "../apiClient.js";
 
-function contentCell(content, key) {
-  if (!content || typeof content !== "object") return "—";
-  const v = content[key];
-  return v && String(v).trim() ? String(v).slice(0, 48) : "—";
+function safeText(v) {
+  return v && String(v).trim() ? String(v).trim() : "—";
 }
 
 function statusBadge(status) {
@@ -36,10 +34,14 @@ function statusBadge(status) {
 function emptyForm() {
   return {
     code: "",
-    vi: "",
-    en: "",
+    name: "",
+    summary: "",
+    narrationShort: "",
+    narrationLong: "",
     lat: "",
     lng: "",
+    radius: "100",
+    priority: "0",
   };
 }
 
@@ -99,10 +101,14 @@ export default function MasterPoisPage() {
     const loc = row.location || {};
     setForm({
       code: row.code || "",
-      vi: contentCell(row.content, "vi") === "—" ? "" : row.content?.vi || "",
-      en: contentCell(row.content, "en") === "—" ? "" : row.content?.en || "",
+      name: row.name || row.localizedContent?.vi?.name || "",
+      summary: row.summary || row.localizedContent?.vi?.summary || "",
+      narrationShort: row.narrationShort || row.localizedContent?.vi?.narrationShort || "",
+      narrationLong: row.narrationLong || row.localizedContent?.vi?.narrationLong || "",
       lat: loc.lat != null ? String(loc.lat) : "",
       lng: loc.lng != null ? String(loc.lng) : "",
+      radius: row.radius != null ? String(row.radius) : "100",
+      priority: row.priority != null ? String(row.priority) : "0",
     });
     setEditRow(row);
   }
@@ -120,22 +126,34 @@ export default function MasterPoisPage() {
       setErr("Vĩ độ và kinh độ phải là số hợp lệ");
       return;
     }
-    const vi = form.vi.trim();
-    const en = form.en.trim();
-    if (!en && !vi) {
-      setErr("Cần nhập ít nhất một nội dung tiếng Anh hoặc tiếng Việt");
+    const radius = Number(form.radius);
+    const priority = Number(form.priority);
+    const name = form.name.trim();
+    if (!name) {
+      setErr("Tên địa điểm là bắt buộc");
+      return;
+    }
+    if (Number.isNaN(radius) || radius < 1 || radius > 100000) {
+      setErr("Bán kính phải là số hợp lệ từ 1 đến 100000");
+      return;
+    }
+    if (Number.isNaN(priority)) {
+      setErr("Priority phải là số hợp lệ");
       return;
     }
     setErr("");
     setBusyCode("__create__");
     try {
-      const content = {};
-      if (en) content.en = en;
-      if (vi) content.vi = vi;
       await createPoi({
         code,
         location: { lat, lng },
-        content,
+        radius,
+        priority,
+        languageCode: "vi",
+        name,
+        summary: form.summary.trim(),
+        narrationShort: form.narrationShort.trim(),
+        narrationLong: form.narrationLong.trim(),
       });
       setCreateOpen(false);
       await load(pagination.page);
@@ -155,21 +173,33 @@ export default function MasterPoisPage() {
       setErr("Vĩ độ và kinh độ phải là số hợp lệ");
       return;
     }
-    const vi = form.vi.trim();
-    const en = form.en.trim();
-    if (!en && !vi) {
-      setErr("Cần nhập ít nhất một nội dung tiếng Anh hoặc tiếng Việt");
+    const radius = Number(form.radius);
+    const priority = Number(form.priority);
+    const name = form.name.trim();
+    if (!name) {
+      setErr("Tên địa điểm là bắt buộc");
+      return;
+    }
+    if (Number.isNaN(radius) || radius < 1 || radius > 100000) {
+      setErr("Bán kính phải là số hợp lệ từ 1 đến 100000");
+      return;
+    }
+    if (Number.isNaN(priority)) {
+      setErr("Priority phải là số hợp lệ");
       return;
     }
     setErr("");
     setBusyCode(editRow.code);
     try {
-      const content = {};
-      if (en) content.en = en;
-      if (vi) content.vi = vi;
       await updatePoiByCode(editRow.code, {
         location: { lat, lng },
-        content,
+        radius,
+        priority,
+        languageCode: "vi",
+        name,
+        summary: form.summary.trim(),
+        narrationShort: form.narrationShort.trim(),
+        narrationLong: form.narrationLong.trim(),
       });
       setEditRow(null);
       await load(pagination.page);
@@ -293,8 +323,9 @@ export default function MasterPoisPage() {
               <tr>
                 <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">Mã</th>
                 <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">Trạng thái</th>
-                <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">VI</th>
-                <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">EN</th>
+                <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">Tên</th>
+                <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">Tóm tắt</th>
+                <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">R / P</th>
                 <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">Tọa độ</th>
                 <th className="bg-gray-800 px-4 py-3 text-left font-bold text-white">QR</th>
                 <th className="bg-gray-800 px-4 py-3 text-right font-bold text-white">Hành động</th>
@@ -316,11 +347,14 @@ export default function MasterPoisPage() {
                       {row.code}
                     </td>
                     <td className="border-b border-gray-200 px-4 py-3">{statusBadge(row.status)}</td>
-                    <td className="max-w-[140px] truncate border-b border-gray-200 px-4 py-3 text-gray-900">
-                      {contentCell(row.content, "vi")}
+                    <td className="max-w-[180px] truncate border-b border-gray-200 px-4 py-3 text-gray-900">
+                      {safeText(row.name || row.localizedContent?.vi?.name)}
                     </td>
-                    <td className="max-w-[140px] truncate border-b border-gray-200 px-4 py-3 text-gray-900">
-                      {contentCell(row.content, "en")}
+                    <td className="max-w-[240px] truncate border-b border-gray-200 px-4 py-3 text-gray-900">
+                      {safeText(row.summary || row.localizedContent?.vi?.summary)}
+                    </td>
+                    <td className="border-b border-gray-200 px-4 py-3 text-gray-900">
+                      {`${row.radius ?? "—"} / ${row.priority ?? "—"}`}
                     </td>
                     <td className="border-b border-gray-200 px-4 py-3 text-gray-900">{locStr}</td>
                     <td className="border-b border-gray-200 px-4 py-3">
@@ -391,16 +425,18 @@ export default function MasterPoisPage() {
                   required
                 />
               </div>
+              <Field label="Tên" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} required />
+              <Field label="Tóm tắt" value={form.summary} onChange={(v) => setForm((f) => ({ ...f, summary: v }))} />
+              <Field label="Văn bản ngắn" value={form.narrationShort} onChange={(v) => setForm((f) => ({ ...f, narrationShort: v }))} />
               <Field
-                label="Nội dung (EN)"
-                value={form.en}
-                onChange={(v) => setForm((f) => ({ ...f, en: v }))}
+                label="Văn bản dài (premium)"
+                value={form.narrationLong}
+                onChange={(v) => setForm((f) => ({ ...f, narrationLong: v }))}
               />
-              <Field
-                label="Nội dung (VI)"
-                value={form.vi}
-                onChange={(v) => setForm((f) => ({ ...f, vi: v }))}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Bán kính (m)" value={form.radius} onChange={(v) => setForm((f) => ({ ...f, radius: v }))} required />
+                <Field label="Priority" value={form.priority} onChange={(v) => setForm((f) => ({ ...f, priority: v }))} required />
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -445,16 +481,18 @@ export default function MasterPoisPage() {
                   required
                 />
               </div>
+              <Field label="Tên" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} required />
+              <Field label="Tóm tắt" value={form.summary} onChange={(v) => setForm((f) => ({ ...f, summary: v }))} />
+              <Field label="Văn bản ngắn" value={form.narrationShort} onChange={(v) => setForm((f) => ({ ...f, narrationShort: v }))} />
               <Field
-                label="Nội dung (EN)"
-                value={form.en}
-                onChange={(v) => setForm((f) => ({ ...f, en: v }))}
+                label="Văn bản dài (premium)"
+                value={form.narrationLong}
+                onChange={(v) => setForm((f) => ({ ...f, narrationLong: v }))}
               />
-              <Field
-                label="Nội dung (VI)"
-                value={form.vi}
-                onChange={(v) => setForm((f) => ({ ...f, vi: v }))}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Bán kính (m)" value={form.radius} onChange={(v) => setForm((f) => ({ ...f, radius: v }))} required />
+                <Field label="Priority" value={form.priority} onChange={(v) => setForm((f) => ({ ...f, priority: v }))} required />
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"

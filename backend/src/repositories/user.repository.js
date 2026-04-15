@@ -48,15 +48,71 @@ class UserRepository {
         ).select('-password');
     }
 
-    async createByAdmin({ email, password, role, isPremium = false, isActive = true }) {
+    async createByAdmin({ email, password, fullName = '', role, isPremium = false, isActive = true, qrScanCount = 0 }) {
         const created = await User.create({
             email,
+            fullName: String(fullName || '').trim(),
             password,
             role,
             isPremium: Boolean(isPremium),
-            isActive: Boolean(isActive)
+            isActive: Boolean(isActive),
+            qrScanCount: Math.max(0, Number(qrScanCount) || 0)
         });
         return await User.findById(created._id).select('-password');
+    }
+
+    async updateByAdmin(id, payload = {}) {
+        const user = await User.findById(id).select('+password');
+        if (!user) return null;
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'email')) {
+            user.email = String(payload.email || '').trim().toLowerCase();
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'fullName')) {
+            user.fullName = String(payload.fullName || '').trim();
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'role')) {
+            user.role = payload.role;
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'isPremium')) {
+            user.isPremium = Boolean(payload.isPremium);
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'isActive')) {
+            user.isActive = Boolean(payload.isActive);
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'qrScanCount')) {
+            user.qrScanCount = Math.max(0, Number(payload.qrScanCount) || 0);
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'password') && payload.password) {
+            user.password = payload.password;
+        }
+
+        await user.save();
+        return await User.findById(user._id).select('-password');
+    }
+
+    async createDefaultUser({ email, password, fullName = '' }) {
+        return await User.create({
+            email: String(email || '').trim().toLowerCase(),
+            fullName: String(fullName || '').trim(),
+            password,
+            role: 'USER',
+            isPremium: false,
+            isActive: true
+        });
+    }
+
+    async incrementQrScanCountIfAllowed(userId, limit = 10) {
+        return await User.findOneAndUpdate(
+            {
+                _id: userId,
+                isPremium: false,
+                isActive: true,
+                qrScanCount: { $lt: Number(limit) }
+            },
+            { $inc: { qrScanCount: 1 } },
+            { new: true }
+        );
     }
 }
 

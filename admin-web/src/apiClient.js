@@ -123,6 +123,13 @@ export async function createAdminUser(body) {
   });
 }
 
+export async function updateAdminUser(userId, body) {
+  return apiRequest(`/api/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PUT',
+    body,
+  });
+}
+
 export async function updateUserRole(userId, role) {
   return apiRequest(`/api/v1/admin/users/${encodeURIComponent(userId)}/role`, {
     method: 'PUT',

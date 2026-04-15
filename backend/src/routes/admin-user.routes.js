@@ -10,6 +10,7 @@ router.use(requireRole(ROLES.ADMIN));
 
 router.get('/', adminUserController.listUsers);
 router.post('/', adminUserController.createUser);
+router.put('/:id', adminUserController.updateUser);
 router.put('/:id/role', adminUserController.updateRole);
 router.put('/:id/premium', adminUserController.updatePremium);
 router.put('/:id/status', adminUserController.updateStatus);

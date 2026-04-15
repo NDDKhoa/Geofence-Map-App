@@ -7,10 +7,15 @@ const poiSchema = new mongoose.Schema({
         type: { type: String, enum: ['Point'], default: 'Point' },
         coordinates: { type: [Number], required: true } // [longitude, latitude]
     },
-    content: {
-        vi: { type: String },
-        en: { type: String }
-    },
+    radius: { type: Number, required: true, default: 100 },
+    priority: { type: Number, default: 0 },
+    languageCode: { type: String, default: 'vi' },
+    name: { type: String, required: true },
+    summary: { type: String, default: '' },
+    narrationShort: { type: String, default: '' },
+    narrationLong: { type: String, default: '' },
+    // Legacy fallback (old schema). Kept for backward compatibility while migrating data.
+    content: { type: mongoose.Schema.Types.Mixed, default: null },
     isPremiumOnly: { type: Boolean, default: false },
     status: {
         type: String,
@@ -24,5 +29,6 @@ const poiSchema = new mongoose.Schema({
 });
 
 poiSchema.index({ location: '2dsphere' });
+poiSchema.index({ code: 1, status: 1 });
 
 module.exports = mongoose.model('Poi', poiSchema);

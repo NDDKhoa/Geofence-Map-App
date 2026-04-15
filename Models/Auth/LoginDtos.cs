@@ -11,6 +11,18 @@ public sealed class LoginRequestDto
     public string Password { get; set; } = "";
 }
 
+public sealed class RegisterRequestDto
+{
+    [JsonPropertyName("fullName")]
+    public string? FullName { get; set; }
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = "";
+
+    [JsonPropertyName("password")]
+    public string Password { get; set; } = "";
+}
+
 /// <summary>Shape returned by <c>POST /auth/login</c> inside <c>data</c>.</summary>
 public sealed class LoginResponseDto
 {
@@ -39,9 +51,15 @@ public sealed class UserDto
     [JsonPropertyName("email")]
     public string? Email { get; set; }
 
+    [JsonPropertyName("fullName")]
+    public string? FullName { get; set; }
+
     [JsonPropertyName("role")]
     public string? Role { get; set; }
 
     [JsonPropertyName("isPremium")]
     public bool IsPremium { get; set; }
+
+    [JsonPropertyName("qrScanCount")]
+    public int QrScanCount { get; set; }
 }

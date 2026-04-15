@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MauiApp1.Views.RegisterPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MauiApp1.ViewModels"
+    x:DataType="vm:RegisterViewModel"
+    Title="Đăng ký"
+    BackgroundColor="{StaticResource SurfaceBackground}">
+
+    <Grid>
+        <BoxView VerticalOptions="Start" HeightRequest="300">
+            <BoxView.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="{StaticResource BrandPrimaryDark}" Offset="0.0" />
+                    <GradientStop Color="{StaticResource BrandPrimary}" Offset="0.6" />
+                    <GradientStop Color="{StaticResource SurfaceBackground}" Offset="1.0" />
+                </LinearGradientBrush>
+            </BoxView.Background>
+        </BoxView>
+
+        <ScrollView>
+            <VerticalStackLayout Padding="24,60,24,40" Spacing="0">
+                <VerticalStackLayout Spacing="12" HorizontalOptions="Center" Margin="0,0,0,32">
+                    <Label Text="Tạo tài khoản mới"
+                           TextColor="White"
+                           FontSize="26"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center" />
+                    <Label Text="Đăng ký nhanh để bắt đầu dùng ứng dụng"
+                           TextColor="White"
+                           Opacity="0.85"
+                           FontSize="14"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+
+                <Border Style="{StaticResource CardBorder}" Padding="28">
+                    <VerticalStackLayout Spacing="18">
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Họ tên (không bắt buộc)"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource TextSecondary}"
+                                   Margin="4,0" />
+                            <Border Stroke="{StaticResource BorderLight}"
+                                    StrokeThickness="1"
+                                    Padding="12,4"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="White">
+                                <Entry Text="{Binding FullName}"
+                                       Placeholder="Nguyen Van A"
+                                       PlaceholderColor="{StaticResource TextSecondary}"
+                                       IsEnabled="{Binding IsNotBusy}"
+                                       BackgroundColor="White"
+                                       TextColor="Black" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Email"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource TextSecondary}"
+                                   Margin="4,0" />
+                            <Border Stroke="{StaticResource BorderLight}"
+                                    StrokeThickness="1"
+                                    Padding="12,4"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="White">
+                                <Entry Text="{Binding Email}"
+                                       Placeholder="email@example.com"
+                                       PlaceholderColor="{StaticResource TextSecondary}"
+                                       Keyboard="Email"
+                                       IsEnabled="{Binding IsNotBusy}"
+                                       BackgroundColor="White"
+                                       TextColor="Black" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Mật khẩu"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource TextSecondary}"
+                                   Margin="4,0" />
+                            <Border Stroke="{StaticResource BorderLight}"
+                                    StrokeThickness="1"
+                                    Padding="12,4"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="White">
+                                <Entry Text="{Binding Password}"
+                                       Placeholder="Tối thiểu 6 ký tự"
+                                       PlaceholderColor="{StaticResource TextSecondary}"
+                                       IsPassword="True"
+                                       IsEnabled="{Binding IsNotBusy}"
+                                       BackgroundColor="White"
+                                       TextColor="Black" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Nhập lại mật khẩu"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource TextSecondary}"
+                                   Margin="4,0" />
+                            <Border Stroke="{StaticResource BorderLight}"
+                                    StrokeThickness="1"
+                                    Padding="12,4"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="White">
+                                <Entry Text="{Binding ConfirmPassword}"
+                                       Placeholder="Nhập lại mật khẩu"
+                                       PlaceholderColor="{StaticResource TextSecondary}"
+                                       IsPassword="True"
+                                       IsEnabled="{Binding IsNotBusy}"
+                                       BackgroundColor="White"
+                                       TextColor="Black" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <Label Text="{Binding ErrorMessage}"
+                               TextColor="#FF5252"
+                               FontSize="13"
+                               HorizontalOptions="Center"
+                               IsVisible="{Binding HasError}" />
+
+                        <Grid>
+                            <Button Text="Đăng ký"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding RegisterCommand}"
+                                    IsEnabled="{Binding IsNotBusy}" />
+                            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                               IsVisible="{Binding IsBusy}"
+                                               Color="White"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"
+                                               HeightRequest="24"
+                                               WidthRequest="24" />
+                        </Grid>
+
+                        <Button Text="Quay lại đăng nhập"
+                                Style="{StaticResource SecondaryButton}"
+                                Clicked="OnBackClicked"
+                                IsEnabled="{Binding IsNotBusy}" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>
+

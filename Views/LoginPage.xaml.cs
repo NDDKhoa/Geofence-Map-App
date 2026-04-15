@@ -1,17 +1,26 @@
 using MauiApp1.Services;
 using MauiApp1.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MauiApp1.Views;
 
 public partial class LoginPage : ContentPage
 {
     private readonly INavigationService _nav;
+    private readonly IServiceProvider _services;
 
-    public LoginPage(LoginViewModel viewModel, INavigationService nav)
+    public LoginPage(LoginViewModel viewModel, INavigationService nav, IServiceProvider services)
     {
         InitializeComponent();
         BindingContext = viewModel;
         _nav = nav;
+        _services = services;
+    }
+
+    private async void OnOpenRegisterClicked(object sender, EventArgs e)
+    {
+        var page = _services.GetRequiredService<RegisterPage>();
+        await Navigation.PushAsync(page);
     }
 
     private void OnCloseClicked(object sender, EventArgs e)

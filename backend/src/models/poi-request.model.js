@@ -7,10 +7,13 @@ const poiRequestSchema = new mongoose.Schema({
             type: { type: String, enum: ['Point'], default: 'Point' },
             coordinates: { type: [Number], required: true } // [longitude, latitude]
         },
-        content: {
-            vi: { type: String },
-            en: { type: String }
-        },
+        radius: { type: Number, required: true, default: 100 },
+        priority: { type: Number, default: 0 },
+        languageCode: { type: String, default: 'vi' },
+        name: { type: String, required: true },
+        summary: { type: String, default: '' },
+        narrationShort: { type: String, default: '' },
+        narrationLong: { type: String, default: '' },
         isPremiumOnly: { type: Boolean, default: false }
     },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
@@ -18,5 +21,7 @@ const poiRequestSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+poiRequestSchema.index({ 'poiData.location': '2dsphere' });
 
 module.exports = mongoose.model('PoiRequest', poiRequestSchema);

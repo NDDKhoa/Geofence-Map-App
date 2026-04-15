@@ -2,6 +2,39 @@ const poiRequestRepository = require('../repositories/poi-request.repository');
 const { AppError } = require('../middlewares/error.middleware');
 
 class PoiRequestService {
+    _toLocaleContent(input) {
+        if (!input) return { name: '', summary: '', narrationShort: '', narrationLong: '' };
+        if (typeof input === 'string') {
+            const text = input.trim();
+            return { name: text, summary: text, narrationShort: text, narrationLong: text };
+        }
+        if (typeof input !== 'object') return { name: '', summary: '', narrationShort: '', narrationLong: '' };
+        return {
+            name: String(input.name || '').trim(),
+            summary: String(input.summary || '').trim(),
+            narrationShort: String(input.narrationShort || '').trim(),
+            narrationLong: String(input.narrationLong || '').trim()
+        };
+    }
+
+    _normalizeContentInput(content) {
+        const safe = content && typeof content === 'object' ? content : {};
+        return {
+            vi: this._toLocaleContent(safe.vi),
+            en: this._toLocaleContent(safe.en)
+        };
+    }
+
+    _pickDisplayText(localeContent) {
+        return (
+            localeContent?.narrationLong ||
+            localeContent?.narrationShort ||
+            localeContent?.summary ||
+            localeContent?.name ||
+            ''
+        );
+    }
+
     async createRequest(poiData, userId) {
         if (!poiData || !poiData.code || !poiData.location || !poiData.location.lat || !poiData.location.lng) {
             throw new AppError('Invalid POI request data. Code, lat and lng are required.', 400);
@@ -21,6 +54,9 @@ class PoiRequestService {
         const requestData = {
             poiData: {
                 ...poiData,
+                radius: poiData.radius !== undefined ? Number(poiData.radius) : 100,
+                priority: poiData.priority !== undefined ? Number(poiData.priority) : 0,
+                content: this._normalizeContentInput(poiData.content),
                 location: {
                     type: 'Point',
                     coordinates: [Number(poiData.location.lng), Number(poiData.location.lat)]
@@ -40,7 +76,13 @@ class PoiRequestService {
                     lat: result.poiData.location.coordinates[1],
                     lng: result.poiData.location.coordinates[0]
                 },
-                content: result.poiData.content,
+                radius: Number(result.poiData.radius || 100),
+                priority: Number(result.poiData.priority || 0),
+                content: {
+                    vi: this._pickDisplayText(result.poiData.content?.vi),
+                    en: this._pickDisplayText(result.poiData.content?.en)
+                },
+                localizedContent: this._normalizeContentInput(result.poiData.content),
                 isPremiumOnly: result.poiData.isPremiumOnly
             },
             status: result.status,

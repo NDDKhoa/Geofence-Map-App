@@ -7,6 +7,7 @@ const { AppError } = require('../middlewares/error.middleware');
 const Cache = require('../utils/cache');
 const config = require('../config');
 const { POI_STATUS } = require('../constants/poi-status');
+const userRepository = require('../repositories/user.repository');
 
 const poiCache = new Cache(config.cache.ttl);
 const ownerPoiSubmissionCache = new Cache(10);
@@ -15,8 +16,79 @@ setInterval(() => poiCache.cleanup(), 3600000);
 setInterval(() => ownerPoiSubmissionCache.cleanup(), 60000);
 
 class PoiService {
+    static USER_QR_SCAN_LIMIT = 10;
+    _extractViContent(poi) {
+        const fallbackFromLegacy = (() => {
+            const legacyVi = poi?.content?.vi;
+            if (!legacyVi) return {};
+            if (typeof legacyVi === 'string') {
+                const text = legacyVi.trim();
+                return { name: text, summary: '', narrationShort: '', narrationLong: text };
+            }
+            return {
+                name: String(legacyVi.name || '').trim(),
+                summary: String(legacyVi.summary || '').trim(),
+                narrationShort: String(legacyVi.narrationShort || '').trim(),
+                narrationLong: String(legacyVi.narrationLong || '').trim()
+            };
+        })();
+
+        return {
+            name: String(poi?.name || fallbackFromLegacy.name || '').trim(),
+            summary: String(poi?.summary || fallbackFromLegacy.summary || '').trim(),
+            narrationShort: String(poi?.narrationShort || fallbackFromLegacy.narrationShort || '').trim(),
+            narrationLong: String(poi?.narrationLong || fallbackFromLegacy.narrationLong || '').trim()
+        };
+    }
+
+    _toLocaleContent(input) {
+        if (!input) return { name: '', summary: '', narrationShort: '', narrationLong: '' };
+        if (typeof input === 'string') {
+            const text = input.trim();
+            return { name: text, summary: text, narrationShort: text, narrationLong: text };
+        }
+        if (typeof input !== 'object') return { name: '', summary: '', narrationShort: '', narrationLong: '' };
+
+        return {
+            name: String(input.name || '').trim(),
+            summary: String(input.summary || '').trim(),
+            narrationShort: String(input.narrationShort || '').trim(),
+            narrationLong: String(input.narrationLong || '').trim()
+        };
+    }
+
+    _normalizeContentInput(content, { fallbackViName = '' } = {}) {
+        const safe = content && typeof content === 'object' ? content : {};
+        const vi = this._toLocaleContent(safe.vi);
+        if (!vi.name && fallbackViName) vi.name = fallbackViName;
+        return { vi };
+    }
+
+    _pickDisplayText(localeContent) {
+        if (!localeContent || typeof localeContent !== 'object') return '';
+        return (
+            localeContent.narrationShort ||
+            localeContent.narrationLong ||
+            localeContent.summary ||
+            localeContent.name ||
+            ''
+        );
+    }
+
+    _legacyContentByLang(content) {
+        const viObj = this._toLocaleContent(content?.vi);
+        return {
+            vi: this._pickDisplayText(viObj),
+            en: ''
+        };
+    }
+
     // Helper to format/map DTO
     mapPoiDto(poi, lang) {
+        const viContent = this._extractViContent(poi);
+        const normalizedContent = { vi: viContent };
+        const legacyByLang = { vi: this._pickDisplayText(viContent), en: '' };
+
         return {
             id: poi._id,
             code: poi.code,
@@ -24,7 +96,16 @@ class PoiService {
                 lat: poi.location.coordinates[1],
                 lng: poi.location.coordinates[0]
             },
-            content: poi.content[lang] || poi.content.en || '', // fallback to en
+            radius: Number(poi.radius || 100),
+            priority: Number(poi.priority || 0),
+            languageCode: String(poi.languageCode || 'vi').toLowerCase(),
+            name: viContent.name,
+            summary: viContent.summary,
+            narrationShort: viContent.narrationShort,
+            narrationLong: viContent.narrationLong,
+            content: this._pickDisplayText(viContent),
+            contentByLang: legacyByLang,
+            localizedContent: normalizedContent,
             isPremiumOnly: poi.isPremiumOnly
         };
     }
@@ -59,15 +140,9 @@ class PoiService {
         const pois = await poiRepository.findNearby(lng, lat, radius, verifiedLimit, verifiedPage);
         const mappedPois = pois.map((poi) => {
             const base = this.mapPoiDto(poi, 'en');
-            const c = poi.content && typeof poi.content.toObject === 'function'
-                ? poi.content.toObject()
-                : { ...(poi.content || {}) };
             return {
                 ...base,
-                contentByLang: {
-                    vi: c.vi || '',
-                    en: c.en || ''
-                }
+                contentByLang: base.contentByLang
             };
         });
 
@@ -129,11 +204,20 @@ class PoiService {
         const doc = {
             code: body.code.trim(),
             location,
-            content: body.content || {},
+            radius: body.radius !== undefined ? Number(body.radius) : 100,
+            priority: body.priority !== undefined ? Number(body.priority) : 0,
+            languageCode: String(body.languageCode || 'vi').toLowerCase(),
+            name: String(body.name || '').trim(),
+            summary: String(body.summary || '').trim(),
+            narrationShort: String(body.narrationShort || '').trim(),
+            narrationLong: String(body.narrationLong || '').trim(),
             isPremiumOnly: Boolean(body.isPremiumOnly),
             status: POI_STATUS.APPROVED,
             submittedBy: null
         };
+        if (!doc.name) {
+            throw new AppError('Name is required', 400);
+        }
         const poi = await poiRepository.create(doc);
         this._invalidateCache();
         return this.mapPoiDto(poi, 'en');
@@ -151,11 +235,26 @@ class PoiService {
         if (body.location) {
             update.location = this._buildLocationPayload(body);
         }
-        if (body.content !== undefined) {
-            const prev = existing.content && typeof existing.content.toObject === 'function'
-                ? existing.content.toObject()
-                : { ...(existing.content || {}) };
-            update.content = { ...prev, ...body.content };
+        if (body.radius !== undefined) {
+            update.radius = Number(body.radius);
+        }
+        if (body.priority !== undefined) {
+            update.priority = Number(body.priority);
+        }
+        if (body.languageCode !== undefined) {
+            update.languageCode = String(body.languageCode || 'vi').toLowerCase();
+        }
+        if (body.name !== undefined) {
+            update.name = String(body.name || '').trim();
+        }
+        if (body.summary !== undefined) {
+            update.summary = String(body.summary || '').trim();
+        }
+        if (body.narrationShort !== undefined) {
+            update.narrationShort = String(body.narrationShort || '').trim();
+        }
+        if (body.narrationLong !== undefined) {
+            update.narrationLong = String(body.narrationLong || '').trim();
         }
         if (body.isPremiumOnly !== undefined) {
             update.isPremiumOnly = Boolean(body.isPremiumOnly);
@@ -206,16 +305,16 @@ class PoiService {
 
         const location = this._buildLocationPayload(raw);
 
-        const content = { en: raw.name.trim() };
-        if (raw.content && typeof raw.content === 'object' && typeof raw.content.vi === 'string' && raw.content.vi.trim()) {
-            content.vi = raw.content.vi.trim();
-        }
-
         return {
             code: raw.code.trim(),
             location,
-            content,
-            radius
+            languageCode: 'vi',
+            name: raw.name.trim(),
+            summary: String(raw.summary || '').trim(),
+            narrationShort: String(raw.narrationShort || '').trim(),
+            narrationLong: String(raw.narrationLong || '').trim(),
+            radius,
+            priority: raw.priority !== undefined ? Number(raw.priority) : 0
         };
     }
 
@@ -227,20 +326,26 @@ class PoiService {
     }
 
     _mapOwnerSubmittedPoi(poi) {
-        const content = poi.content && typeof poi.content.toObject === 'function'
-            ? poi.content.toObject()
-            : { ...(poi.content || {}) };
+        const viContent = this._extractViContent(poi);
+        const contentByLang = { vi: this._pickDisplayText(viContent), en: '' };
         return {
             id: poi._id,
             code: poi.code,
-            name: content.en || '',
+            name: viContent.name,
             status: poi.status,
             ownerId: poi.submittedBy,
             location: {
                 lat: poi.location.coordinates[1],
                 lng: poi.location.coordinates[0]
             },
-            content,
+            radius: Number(poi.radius || 100),
+            priority: Number(poi.priority || 0),
+            languageCode: String(poi.languageCode || 'vi').toLowerCase(),
+            summary: viContent.summary,
+            narrationShort: viContent.narrationShort,
+            narrationLong: viContent.narrationLong,
+            content: contentByLang,
+            localizedContent: { vi: viContent },
             isPremiumOnly: poi.isPremiumOnly,
             createdAt: poi.createdAt,
             updatedAt: poi.updatedAt
@@ -256,9 +361,8 @@ class PoiService {
     }
 
     _mapModerationDto(poi) {
-        const content = poi.content && typeof poi.content.toObject === 'function'
-            ? poi.content.toObject()
-            : { ...(poi.content || {}) };
+        const viContent = this._extractViContent(poi);
+        const contentByLang = { vi: this._pickDisplayText(viContent), en: '' };
         return {
             id: poi._id,
             code: poi.code,
@@ -269,7 +373,15 @@ class PoiService {
                 lat: poi.location.coordinates[1],
                 lng: poi.location.coordinates[0]
             },
-            content,
+            radius: Number(poi.radius || 100),
+            priority: Number(poi.priority || 0),
+            languageCode: String(poi.languageCode || 'vi').toLowerCase(),
+            name: viContent.name,
+            summary: viContent.summary,
+            narrationShort: viContent.narrationShort,
+            narrationLong: viContent.narrationLong,
+            content: contentByLang,
+            localizedContent: { vi: viContent },
             isPremiumOnly: poi.isPremiumOnly,
             createdAt: poi.createdAt,
             updatedAt: poi.updatedAt
@@ -461,7 +573,13 @@ class PoiService {
         const doc = {
             code: payload.code,
             location: payload.location,
-            content: payload.content,
+            radius: payload.radius,
+            priority: payload.priority,
+            languageCode: payload.languageCode,
+            name: payload.name,
+            summary: payload.summary,
+            narrationShort: payload.narrationShort,
+            narrationLong: payload.narrationLong,
             isPremiumOnly: false,
             status: POI_STATUS.PENDING,
             submittedBy: user._id
@@ -554,6 +672,18 @@ class PoiService {
         if (poi.isPremiumOnly && !user.isPremium) {
             throw new AppError('Premium subscription required for this POI', 403);
         }
+
+        // Non-premium users: max 10 scans total. Premium users: unlimited.
+        if (!user.isPremium) {
+            const updated = await userRepository.incrementQrScanCountIfAllowed(
+                user._id,
+                PoiService.USER_QR_SCAN_LIMIT
+            );
+            if (!updated) {
+                throw new AppError('Bạn đã dùng hết 10 lượt quét QR miễn phí. Vui lòng nâng cấp VIP để quét không giới hạn.', 403);
+            }
+        }
+
         this._invalidateCache();
         return this._mapModerationDto(poi);
     }

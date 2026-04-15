@@ -137,6 +137,11 @@
                                                    WidthRequest="24" />
                             </Grid>
 
+                            <Button Text="Tạo tài khoản mới"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Clicked="OnOpenRegisterClicked"
+                                    IsEnabled="{Binding IsNotBusy}" />
+
                             <Button Text="Quay lại"
                                     Style="{StaticResource SecondaryButton}"
                                     Clicked="OnCloseClicked"
@@ -148,7 +153,7 @@
                 </Border>
 
                 <!-- FOOTER -->
-                <Label Text="Chưa có tài khoản? Liên hệ quản trị viên." 
+                <Label Text="Chưa có tài khoản? Bấm Tạo tài khoản mới để đăng ký." 
                        TextColor="{StaticResource TextSecondary}"
                        FontSize="13"
                        HorizontalOptions="Center"

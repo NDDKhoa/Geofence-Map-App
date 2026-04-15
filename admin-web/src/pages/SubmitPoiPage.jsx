@@ -3,11 +3,14 @@ import { submitOwnerPoi } from '../apiClient.js';
 
 export default function SubmitPoiPage() {
   const [code, setCode] = useState('');
-  const [nameEn, setNameEn] = useState('');
-  const [nameVi, setNameVi] = useState('');
+  const [name, setName] = useState('');
+  const [summary, setSummary] = useState('');
+  const [narrationShort, setNarrationShort] = useState('');
+  const [narrationLong, setNarrationLong] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [radius, setRadius] = useState('50');
+  const [priority, setPriority] = useState('0');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
@@ -17,12 +20,13 @@ export default function SubmitPoiPage() {
     setErr('');
     setOk('');
     const c = code.trim();
-    const n = nameEn.trim();
+    const n = name.trim();
+    const p = Number(priority);
     const r = Number(radius);
     const la = Number(lat);
     const ln = Number(lng);
     if (!c || !n) {
-      setErr('Mã địa điểm và tên tiếng Anh là bắt buộc.');
+      setErr('Mã địa điểm và tên là bắt buộc.');
       return;
     }
     if (Number.isNaN(la) || Number.isNaN(ln)) {
@@ -33,23 +37,33 @@ export default function SubmitPoiPage() {
       setErr('Bán kính phải nằm trong khoảng từ 1 đến 100000 mét.');
       return;
     }
+    if (Number.isNaN(p)) {
+      setErr('Priority phải là số hợp lệ.');
+      return;
+    }
     setLoading(true);
     try {
       const body = {
         code: c,
         name: n,
+        summary: summary.trim(),
+        narrationShort: narrationShort.trim(),
+        narrationLong: narrationLong.trim(),
         radius: r,
+        priority: p,
         location: { lat: la, lng: ln },
-        content: nameVi.trim() ? { vi: nameVi.trim() } : undefined,
       };
       await submitOwnerPoi(body);
       setOk('Gửi thành công. Địa điểm đang chờ quản trị viên duyệt.');
       setCode('');
-      setNameEn('');
-      setNameVi('');
+      setName('');
+      setSummary('');
+      setNarrationShort('');
+      setNarrationLong('');
       setLat('');
       setLng('');
       setRadius('50');
+      setPriority('0');
     } catch (e) {
       setErr(e.message || 'Gửi yêu cầu thất bại');
     } finally {
@@ -82,19 +96,36 @@ export default function SubmitPoiPage() {
           />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-slate-600">Tên (Tiếng Anh)</span>
+          <span className="text-xs font-medium text-slate-600">Tên địa điểm</span>
           <input
             required
-            value={nameEn}
-            onChange={(e) => setNameEn(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
           />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-slate-600">Tên (Tiếng Việt, không bắt buộc)</span>
+          <span className="text-xs font-medium text-slate-600">Tóm tắt</span>
           <input
-            value={nameVi}
-            onChange={(e) => setNameVi(e.target.value)}
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-slate-600">Văn bản ngắn</span>
+          <input
+            value={narrationShort}
+            onChange={(e) => setNarrationShort(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-slate-600">Văn bản dài (premium)</span>
+          <textarea
+            rows={4}
+            value={narrationLong}
+            onChange={(e) => setNarrationLong(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
           />
         </label>
@@ -118,15 +149,26 @@ export default function SubmitPoiPage() {
             />
           </label>
         </div>
-        <label className="block">
-          <span className="text-xs font-medium text-slate-600">Bán kính (mét)</span>
-          <input
-            required
-            value={radius}
-            onChange={(e) => setRadius(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Bán kính (mét)</span>
+            <input
+              required
+              value={radius}
+              onChange={(e) => setRadius(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Priority</span>
+            <input
+              required
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+          </label>
+        </div>
         <button
           type="submit"
           disabled={loading}

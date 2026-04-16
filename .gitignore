@@ -1,36 +1,28 @@
-﻿# Visual Studio
+﻿# ── .NET / MAUI ─────────────────────────────────────────
 .vs/
 *.user
-*.suo
 *.userosscache
 *.sln.docstates
 
-# Build
 bin/
 obj/
 
-# .NET artifacts
 *.dll
 *.exe
 *.pdb
 *.cache
 *.mdb
 
-# NuGet
 *.nupkg
 *.snupkg
 packages/
 
-# Rider / VSCode
-.idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
+# MAUI
+*.maui-cache
 
-# OS
-.DS_Store
-Thumbs.db
+# Secrets / local config
+secrets.json
+appsettings.Development.json
 
 # Android
 *.keystore
@@ -43,12 +35,34 @@ Thumbs.db
 *.xcuserdata
 *.ipa
 
-# Logs
+Thumbs.db
+
+# ── Node / tooling ───────────────────────────────────────
+node_modules/
+.env
+!.env.example
+jsconfig.json
+
+# ── React (Vite / admin-web) ─────────────────────────────
+logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# MAUI
-*.maui-cache
+node_modules
+dist
+dist-ssr
+*.local
 
-# Secrets
-secrets.json
-appsettings.Development.json
+# ── Editor ───────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sw?

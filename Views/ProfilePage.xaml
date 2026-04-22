@@ -21,19 +21,23 @@
                            TextColor="{StaticResource TextPrimary}" />
 
                     <HorizontalStackLayout Spacing="12">
-                        <Label Text="Vai tro:"
-                               Style="{StaticResource BodyText}" />
+                        <Label Text="Vai trò:"
+                               FontSize="15"
+                               TextColor="{StaticResource TextPrimary}" />
                         <Label Text="{Binding RoleDisplay}"
+                               FontSize="15"
                                FontAttributes="Bold"
                                TextColor="{StaticResource BrandPrimaryDark}" />
                     </HorizontalStackLayout>
 
                     <HorizontalStackLayout Spacing="12">
-                        <Label Text="Goi:"
-                               Style="{StaticResource BodyText}" />
+                        <Label Text="Gói:"
+                               FontSize="15"
+                               TextColor="{StaticResource TextPrimary}" />
                         <Label Text="{Binding PremiumDisplay}"
+                               FontSize="15"
                                FontAttributes="Bold"
-                               TextColor="{StaticResource NatureEmerald}" />
+                               TextColor="{StaticResource BrandPrimaryDark}" />
                     </HorizontalStackLayout>
                 </VerticalStackLayout>
             </Border>
@@ -60,7 +64,9 @@
                     <Label Text="Chu dia diem (OWNER)"
                            Style="{StaticResource SectionTitle}" />
                     <Label Text="Mo tab 'Gui POI' ben duoi, dien form va gui — diem se o trang thai cho Admin duyet."
-                           Style="{StaticResource BodyText}" />
+                           FontSize="15"
+                           TextColor="{StaticResource TextPrimary}"
+                           LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
@@ -70,7 +76,9 @@
                     <Label Text="Quản trị (ADMIN)"
                            Style="{StaticResource SectionTitle}" />
                     <Label Text="Bảng điều khiển: mở tab 'Quản trị' bên dưới (Web/API sẵn sàng)."
-                           Style="{StaticResource BodyText}" />
+                           FontSize="15"
+                           TextColor="{StaticResource TextPrimary}"
+                           LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 

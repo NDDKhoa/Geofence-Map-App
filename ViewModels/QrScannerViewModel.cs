@@ -189,10 +189,10 @@ public class QrScannerViewModel : INotifyPropertyChanged
         if (!_scanLimit.CanScan())
         {
             Debug.WriteLine($"[QR-SCAN] Scan limit reached source={source}");
-            UxStatusText = "Đã hết lượt quét hôm nay";
+            UxStatusText = "Không nhận diện được mã hợp lệ";
             UxDetailError = _scanLimit.GetLimitMessage();
             ApplyPhase(QrScannerUxPhase.InvalidFormat);
-            ScheduleErrorResetToReady(3500);
+            ScheduleErrorResetToReady(5000);
             return false;
         }
 

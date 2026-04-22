@@ -74,6 +74,14 @@ public class QrScanLimitService
         var remaining = GetRemainingScans();
         var limit = _auth.IsAuthenticated ? LimitAuthenticated : LimitGuest;
 
+        if (remaining <= 0)
+        {
+            if (_auth.IsAuthenticated)
+                return "Bạn đã dùng hết 20 lượt quét QR miễn phí. Vui lòng nâng cấp Premium để quét không giới hạn.";
+            else
+                return "Bạn đã dùng hết 10 lượt quét QR miễn phí. Vui lòng nâng cấp Premium để quét không giới hạn.";
+        }
+
         if (_auth.IsAuthenticated)
             return $"Còn {remaining}/{limit} lần quét hôm nay";
         else

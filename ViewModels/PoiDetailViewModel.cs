@@ -179,12 +179,17 @@ public class PoiDetailViewModel : INotifyPropertyChanged, IQueryAttributable
             OnPropertyChanged(nameof(StopButtonText));
             OnPropertyChanged(nameof(HasZoneAccess));
             OnPropertyChanged(nameof(DoesNotHaveZoneAccess));
+            OnPropertyChanged(nameof(DisplayedNarration));
             CheckDownloadStatus();
         }
     }
 
     public bool IsPlaying => _audioPlayer.IsPlaying;
     public bool IsBuffering => _audioPlayer.IsBuffering;
+
+    public string DisplayedNarration => _auth.IsAuthenticated
+        ? (Poi?.Localization?.NarrationLong ?? "")
+        : (Poi?.Localization?.Summary ?? "");
     
     private bool _isDownloaded;
     public bool IsDownloaded
@@ -206,8 +211,9 @@ public class PoiDetailViewModel : INotifyPropertyChanged, IQueryAttributable
     public string AudioDurationText => _audioPlayer.Duration == TimeSpan.Zero ? "--:--" : _audioPlayer.Duration.ToString(@"mm\:ss");
     public string AudioPositionText => _audioPlayer.CurrentPosition == TimeSpan.Zero ? "00:00" : _audioPlayer.CurrentPosition.ToString(@"mm\:ss");
     public bool ShowPurchasedAudioPlayer => AccessState == AccessRenderState.Unlocked;
-    public bool ShowSummaryButton => true;
-    public bool ShowDetailedCTA => AccessState != AccessRenderState.Unlocked && AccessState != AccessRenderState.Resolving;
+    public bool ShowSummaryButton => !_auth.IsAuthenticated;
+    public bool ShowDetailedButton => _auth.IsAuthenticated;
+    public bool ShowDetailedCTA => false;
     public double AudioSeekValue
     {
         get
@@ -243,14 +249,15 @@ public class PoiDetailViewModel : INotifyPropertyChanged, IQueryAttributable
             OnPropertyChanged(nameof(ShowPurchasedAudioPlayer));
             OnPropertyChanged(nameof(ShowDetailedCTA));
             OnPropertyChanged(nameof(ShowSummaryButton));
+            OnPropertyChanged(nameof(ShowDetailedButton));
             OnPropertyChanged(nameof(IsResolvingAccess));
         }
     }
 
     public bool IsResolvingAccess => AccessState == AccessRenderState.Resolving || AccessState == AccessRenderState.Unknown;
-    public bool HasZoneAccess => AccessState == AccessRenderState.Unlocked;
-    public bool DoesNotHaveZoneAccess => AccessState != AccessRenderState.Unlocked;
-    public bool ShowPurchaseBanner => AccessState == AccessRenderState.NotPurchased || AccessState == AccessRenderState.NotLoggedIn;
+    public bool HasZoneAccess => _auth.IsAuthenticated;
+    public bool DoesNotHaveZoneAccess => !_auth.IsAuthenticated;
+    public bool ShowPurchaseBanner => false;
     public string PurchaseBannerTitle => AccessState == AccessRenderState.NotLoggedIn ? "Đăng nhập để xem" : "Mua khu vực để mở khóa";
     public string PurchaseBannerDescription => AccessState == AccessRenderState.NotLoggedIn 
         ? "Vui lòng đăng nhập để kiểm tra quyền truy cập của bạn." 
@@ -480,40 +487,13 @@ public class PoiDetailViewModel : INotifyPropertyChanged, IQueryAttributable
         if (Poi == null) return;
         if (IsBusy) return;
 
-        if (!HasZoneAccess)
-        {
-            if (string.IsNullOrWhiteSpace(Poi.ZoneCode))
-            {
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                {
-                    var page = ResolveAlertPage();
-                    if (page != null)
-                        await page.DisplayAlertAsync("Thông báo", "POI chưa thuộc khu vực nào.", "OK");
-                });
-                return;
-            }
-
-            var wantPurchase = await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var page = ResolveAlertPage();
-                if (page == null) return false;
-
-                return await page.DisplayAlertAsync(
-                    "✨ Khám phá câu chuyện chi tiết",
-                    $"Bạn cần sở hữu khu vực '{Poi.ZoneName}' để có thể nghe bản thuyết minh chuyên sâu và những bí mật ẩn sau địa điểm này.",
-                    "Mua ngay",
-                    "Để sau");
-            }).ConfigureAwait(false);
-
-            if (wantPurchase) await PurchaseZoneAsync().ConfigureAwait(false);
-            return;
-        }
-
         IsBusy = true;
         try
         {
-            await PlayPurchasedAudioAsync().ConfigureAwait(false);
-            
+            // When authenticated, play NarrationLong
+            var lang = _languagePrefs.GetStoredOrDefault();
+            await _narrationService.PlayPoiDetailedAsync(Poi, lang).ConfigureAwait(false);
+
             OnPropertyChanged(nameof(IsPlaying));
             OnPropertyChanged(nameof(IsBuffering));
         }

@@ -160,15 +160,6 @@ public class PoiNarrationService
     /// </summary>
     public async Task PlayPoiDetailedAsync(Poi poi, string? lang = null)
     {
-        // --- MANDATORY SERVICE LEVEL LOCKDOWN (TASK 1, 3, 6) ---
-        var zoneCode = poi.ZoneCode;
-        if (string.IsNullOrWhiteSpace(zoneCode))
-        {
-            zoneCode = await _zoneResolver.ResolveZoneAsync(poi.Code).ConfigureAwait(false);
-        }
-
-        await _zoneAccess.EnsureAccessAsync(zoneCode ?? "").ConfigureAwait(false);
-
         var language = ResolveLanguage(lang);
         _appState.ActiveNarrationCode = poi.Code;
         Debug.WriteLine($"[AUDIO] PlayPoiDetailedAsync: code={poi.Code} lang={language} _activeNarrationCode='{_appState.ActiveNarrationCode}'");
@@ -396,14 +387,22 @@ public class PoiNarrationService
     }
 
     private static string? SelectShortText(Poi poi)
-        => !string.IsNullOrWhiteSpace(poi.Localization?.NarrationShort)
+    {
+        var result = !string.IsNullOrWhiteSpace(poi.Localization?.NarrationShort)
             ? poi.Localization!.NarrationShort
             : poi.Localization?.Name ?? "";
+        Debug.WriteLine($"[AUDIO] SelectShortText: returning '{result?.Substring(0, Math.Min(50, result?.Length ?? 0))}...'");
+        return result;
+    }
 
     private static string? SelectLongText(Poi poi)
-        => !string.IsNullOrWhiteSpace(poi.Localization?.NarrationLong) ? poi.Localization!.NarrationLong
+    {
+        var result = !string.IsNullOrWhiteSpace(poi.Localization?.NarrationLong) ? poi.Localization!.NarrationLong
             : !string.IsNullOrWhiteSpace(poi.Localization?.NarrationShort) ? poi.Localization!.NarrationShort
             : poi.Localization?.Name ?? "";
+        Debug.WriteLine($"[AUDIO] SelectLongText: returning '{result?.Substring(0, Math.Min(50, result?.Length ?? 0))}...'");
+        return result;
+    }
 
     private async Task SpeakSafeAsync(string? poiCode, string text, string language)
     {

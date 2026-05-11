@@ -5,16 +5,16 @@ namespace MauiApp1.Services;
 
 /// <summary>
 /// Quản lý giới hạn số lần quét QR dựa trên trạng thái đăng nhập.
-/// - Chưa đăng nhập: 10 lần
-/// - Đã đăng nhập: 20 lần
+/// - Chưa đăng nhập: 50 lần
+/// - Đã đăng nhập: 100 lần
 /// </summary>
 public class QrScanLimitService
 {
     private const string KeyScanCount = "qr_scan_count";
     private const string KeyLastResetDate = "qr_scan_last_reset";
 
-    private const int LimitGuest = 10;
-    private const int LimitAuthenticated = 20;
+    private const int LimitGuest = 50;
+    private const int LimitAuthenticated = 100;
 
     private readonly AuthService _auth;
 
@@ -63,15 +63,15 @@ public class QrScanLimitService
         if (remaining <= 0)
         {
             if (_auth.IsAuthenticated)
-                return "Bạn đã dùng hết 20 lượt quét QR miễn phí cho hôm nay.";
+                return "Bạn đã dùng hết 100 lượt quét QR miễn phí cho hôm nay.";
             else
-                return "Bạn đã dùng hết 10 lượt quét QR miễn phí. Đăng nhập để nhận thêm 10 lượt.";
+                return "Bạn đã dùng hết 50 lượt quét QR miễn phí. Đăng nhập để nhận thêm 50 lượt.";
         }
 
         if (_auth.IsAuthenticated)
             return $"Còn {remaining}/{limit} lần quét hôm nay";
         else
-            return $"Còn {remaining}/{limit} lần quét (Đăng nhập để tăng lên 20 lần)";
+            return $"Còn {remaining}/{limit} lần quét (Đăng nhập để tăng lên 100 lần)";
     }
 
     /// <summary>Reset số lần quét nếu sang ngày mới.</summary>

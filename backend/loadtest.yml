@@ -1,0 +1,39 @@
+﻿config:
+  target: "http://localhost:3000" # QUAN TRỌNG: Sửa lại đúng Port Backend Node.js của bạn
+  phases:
+    # Giai đoạn 1: Khởi động nhẹ nhàng (Test tính ổn định)
+    - duration: 30         # Chạy trong 30 giây
+      arrivalRate: 10      # Mỗi giây tạo 10 user (Tổng cộng 300 user)
+      name: "Khởi động (10 users/s)"
+      
+    # Giai đoạn 2: Tăng tốc độ lên (Stress test thực sự)
+    # Nếu chỉ muốn test nhẹ thì xoá đoạn block này đi
+    - duration: 60         # Chạy trong 60 giây
+      arrivalRate: 50      # Mỗi giây tạo 50 user (Tổng cộng 3000 user)
+      name: "Tải nặng (50 users/s)"
+      
+  engines:
+    socketio: {} # Kích hoạt engine Socket.IO (Hỗ trợ tốt v3/v4)
+
+scenarios:
+  - name: "Luồng user: Join -> Request -> Complete"
+    engine: socketio
+    flow:
+      # 1. User tham gia phòng
+      - emit:
+          channel: "join-poi"
+          data: "POI_TEST_001"
+          
+      # 2. Chờ 1 giây giả lập thời gian thao tác UI
+      - think: 1 
+      
+      # 3. User bấm nút yêu cầu nghe
+      - emit:
+          channel: "request-audio"
+          
+      # 4. Giả lập user đang nghe audio (Giữ kết nối trong 15s)
+      - think: 15
+      
+      # 5. Phát xong, gửi sự kiện hoàn tất để nhường chỗ
+      - emit:
+          channel: "audio-completed"

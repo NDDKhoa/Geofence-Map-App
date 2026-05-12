@@ -143,6 +143,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMapUiStateArbitrator>(sp => sp.GetRequiredService<ObservingMapUiStateArbitrator>());
 #endif
 
+        builder.Services.AddSingleton<IDeviceCapabilityService, DeviceCapabilityService>();
         builder.Services.AddSingleton<NavigationService>();
         builder.Services.AddSingleton<ObservingNavigationService>(sp => new ObservingNavigationService(
             sp.GetRequiredService<NavigationService>(),

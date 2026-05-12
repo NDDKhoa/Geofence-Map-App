@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MauiApp1.ApplicationContracts.Services;
 
 namespace MauiApp1.Services;
 
@@ -11,12 +12,14 @@ namespace MauiApp1.Services;
 public class NavigationService : INavigationService
 {
     private readonly AppState _appState;
+    private readonly IDeviceCapabilityService _deviceCapability;
     private readonly SemaphoreSlim _navGate = new(1, 1);
     private bool _isNavigating;
 
-    public NavigationService(AppState appState)
+    public NavigationService(AppState appState, IDeviceCapabilityService deviceCapability)
     {
         _appState = appState;
+        _deviceCapability = deviceCapability;
     }
 
     public async Task PushModalAsync(Page page, bool animated = true)
@@ -88,6 +91,24 @@ public class NavigationService : INavigationService
 
         if (!await StartNavigationAsync($"NavigateToAsync: {route}").ConfigureAwait(false))
             return;
+
+        // Simulated device capability check for PoiDetailPage (per requirements)
+        if (route.Contains("poidetail", StringComparison.OrdinalIgnoreCase))
+        {
+            var isHigh = _deviceCapability.IsHighPerformance();
+            var message = isHigh ? "Cấu hình máy mạnh" : "Cấu hình máy yếu";
+            
+            // Non-blocking toast (using Debug for simulation as per client-side constraints, 
+            // but visible in console/logs without blocking the UI stack).
+            Debug.WriteLine($"[DEVICE-CAPABILITY] {message}");
+            
+            // We use BeginInvoke to fire-and-forget a non-blocking alert 
+            // as a visual placeholder for the toast.
+            MainThread.BeginInvokeOnMainThread(() => 
+            {
+                _ = Shell.Current.DisplayAlert("Device Check", message, "OK");
+            });
+        }
 
         try
         {

@@ -1,0 +1,180 @@
+{
+  "aggregate": {
+    "counters": {
+      "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 3300,
+      "vusers.created": 3300,
+      "errors.Error: Authentication token required": 3300,
+      "vusers.failed": 3300
+    },
+    "rates": {},
+    "firstCounterAt": 1778557222835,
+    "lastCounterAt": 1778557312973,
+    "firstMetricAt": 1778557222835,
+    "lastMetricAt": 1778557312973,
+    "period": 1778557310000,
+    "summaries": {},
+    "histograms": {}
+  },
+  "intermediate": [
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 73,
+        "vusers.created": 73,
+        "errors.Error: Authentication token required": 73,
+        "vusers.failed": 73
+      },
+      "rates": {},
+      "firstCounterAt": 1778557222835,
+      "lastCounterAt": 1778557229978,
+      "firstMetricAt": 1778557222835,
+      "lastMetricAt": 1778557229978,
+      "period": "1778557220000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 100,
+        "vusers.created": 100,
+        "errors.Error: Authentication token required": 100,
+        "vusers.failed": 100
+      },
+      "rates": {},
+      "firstCounterAt": 1778557230018,
+      "lastCounterAt": 1778557239978,
+      "firstMetricAt": 1778557230018,
+      "lastMetricAt": 1778557239978,
+      "period": "1778557230000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 100,
+        "vusers.created": 100,
+        "errors.Error: Authentication token required": 100,
+        "vusers.failed": 100
+      },
+      "rates": {},
+      "firstCounterAt": 1778557240018,
+      "lastCounterAt": 1778557249985,
+      "firstMetricAt": 1778557240018,
+      "lastMetricAt": 1778557249985,
+      "period": "1778557240000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 401,
+        "vusers.created": 401,
+        "errors.Error: Authentication token required": 400,
+        "vusers.failed": 400
+      },
+      "rates": {},
+      "firstCounterAt": 1778557250018,
+      "lastCounterAt": 1778557259996,
+      "firstMetricAt": 1778557250018,
+      "lastMetricAt": 1778557259996,
+      "period": "1778557250000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 500,
+        "vusers.created": 500,
+        "errors.Error: Authentication token required": 500,
+        "vusers.failed": 500
+      },
+      "rates": {},
+      "firstCounterAt": 1778557260010,
+      "lastCounterAt": 1778557269995,
+      "firstMetricAt": 1778557260010,
+      "lastMetricAt": 1778557269995,
+      "period": "1778557260000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 500,
+        "vusers.created": 500,
+        "errors.Error: Authentication token required": 500,
+        "vusers.failed": 500
+      },
+      "rates": {},
+      "firstCounterAt": 1778557270019,
+      "lastCounterAt": 1778557279995,
+      "firstMetricAt": 1778557270019,
+      "lastMetricAt": 1778557279995,
+      "period": "1778557270000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 500,
+        "vusers.created": 500,
+        "errors.Error: Authentication token required": 500,
+        "vusers.failed": 500
+      },
+      "rates": {},
+      "firstCounterAt": 1778557280018,
+      "lastCounterAt": 1778557289995,
+      "firstMetricAt": 1778557280018,
+      "lastMetricAt": 1778557289995,
+      "period": "1778557280000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 500,
+        "vusers.created": 500,
+        "errors.Error: Authentication token required": 500,
+        "vusers.failed": 500
+      },
+      "rates": {},
+      "firstCounterAt": 1778557290017,
+      "lastCounterAt": 1778557299995,
+      "firstMetricAt": 1778557290017,
+      "lastMetricAt": 1778557299995,
+      "period": "1778557290000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 500,
+        "vusers.created": 500,
+        "errors.Error: Authentication token required": 500,
+        "vusers.failed": 500
+      },
+      "rates": {},
+      "firstCounterAt": 1778557300019,
+      "lastCounterAt": 1778557309995,
+      "firstMetricAt": 1778557300019,
+      "lastMetricAt": 1778557309995,
+      "period": "1778557300000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Luồng user: Join -> Request -> Complete": 126,
+        "vusers.created": 126,
+        "errors.Error: Authentication token required": 127,
+        "vusers.failed": 127
+      },
+      "rates": {},
+      "firstCounterAt": 1778557310007,
+      "lastCounterAt": 1778557312973,
+      "firstMetricAt": 1778557310007,
+      "lastMetricAt": 1778557312973,
+      "period": "1778557310000",
+      "summaries": {},
+      "histograms": {}
+    }
+  ]
+}

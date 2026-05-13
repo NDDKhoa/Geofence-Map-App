@@ -31,6 +31,7 @@ public class QrScannerViewModel : INotifyPropertyChanged
     private readonly MapViewModel _mapVm;
     private readonly INavigationService _navService;
     private readonly QrScanLimitService _scanLimit;
+    private readonly IDeviceCapabilityService _deviceCapability;
 
     private bool _isHandlingScan;
     private CancellationTokenSource? _errorResetCts;
@@ -50,13 +51,14 @@ public class QrScannerViewModel : INotifyPropertyChanged
     private DateTime _lastSubmittedUtc = DateTime.MinValue;
     private const int SamePayloadDebounceMs = 1200;
 
-    public QrScannerViewModel(IPoiEntryCoordinator coordinator, IQrScannerService qr, MapViewModel mapVm, INavigationService navService, QrScanLimitService scanLimit)
+    public QrScannerViewModel(IPoiEntryCoordinator coordinator, IQrScannerService qr, MapViewModel mapVm, INavigationService navService, QrScanLimitService scanLimit, IDeviceCapabilityService deviceCapability)
     {
         _coordinator = coordinator;
         _qr = qr;
         _mapVm = mapVm;
         _navService = navService;
         _scanLimit = scanLimit;
+        _deviceCapability = deviceCapability;
         ScanCommand = new Command(async () => await ScanAsync(), () => !IsProcessingScan);
         CancelCommand = new Command(async () => await CancelAsync());
     }
@@ -271,6 +273,21 @@ public class QrScannerViewModel : INotifyPropertyChanged
 
             // Tăng số lần quét sau khi quét thành công
             _scanLimit.IncrementScanCount();
+
+            // Kiểm tra cấu hình thiết bị và hiển thị thông báo
+            var isHighPerf = _deviceCapability.IsHighPerformance();
+            var perfMessage = isHighPerf ? "Máy cấu hình mạnh" : "Máy cấu hình yếu";
+            Debug.WriteLine($"[DEVICE-CAPABILITY] Random check: {perfMessage} (value={isHighPerf})");
+
+            // Hiển thị thông báo cho người dùng
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await Microsoft.Maui.Controls.Application.Current?.MainPage?.DisplayAlert(
+                    "Thông báo cấu hình",
+                    perfMessage,
+                    "OK"
+                );
+            });
 
             var preview = await _qr.ParseAsync(rawText, token).ConfigureAwait(false);
             var key = preview.Success ? preview.Code! : trimmedRaw;

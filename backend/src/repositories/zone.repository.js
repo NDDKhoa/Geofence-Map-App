@@ -238,6 +238,26 @@ class ZoneRepository {
 
         return { success: true };
     }
+
+    /**
+     * Increment scan count for zone
+     */
+    async incrementScanCount(id) {
+        const zone = await Zone.findByIdAndUpdate(
+            id,
+            { $inc: { scanCount: 1 } },
+            { new: true }
+        );
+
+        if (!zone) {
+            console.warn(`[ZONE] Failed to increment scan count: Zone ${id} not found`);
+            return null;
+        }
+
+        console.log(`[ZONE] Incremented scan count for zone ${zone.code}: ${zone.scanCount}`);
+
+        return zone;
+    }
 }
 
 module.exports = new ZoneRepository();

@@ -213,12 +213,15 @@ class ZoneService {
             }));
 
             // 8. Log successful scan
-            await ScanLog.create({ 
-                zoneCode, userId, ip, userAgent, 
+            await ScanLog.create({
+                zoneCode, userId, ip, userAgent,
                 status: 'SUCCESS'
             });
 
-            // 8. Return zone + POIs + access status
+            // 9. Increment scan count for the zone
+            await zoneRepository.incrementScanCount(zone._id);
+
+            // 10. Return zone + POIs + access status
             return {
                 zone: {
                     id: zone._id.toString(),

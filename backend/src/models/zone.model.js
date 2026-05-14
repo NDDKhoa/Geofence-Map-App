@@ -51,7 +51,13 @@ const zoneSchema = new mongoose.Schema({
     tags: [{
         type: String,
         lowercase: true
-    }]
+    }],
+    // QR scan statistics
+    scanCount: {
+        type: Number,
+        default: 0,
+        min: 0
+    }
 }, {
     timestamps: true
 });

@@ -228,6 +228,7 @@ export default function ZonesManagementPage() {
                   <th className="px-6 py-4 font-bold uppercase tracking-widest text-[10px]">Mô tả</th>
                   <th className="px-6 py-4 font-bold uppercase tracking-widest text-[10px]">Giá</th>
                   <th className="px-6 py-4 font-bold uppercase tracking-widest text-[10px]">Số lượng POI</th>
+                  <th className="px-6 py-4 font-bold uppercase tracking-widest text-[10px]">Số lượt quét QR</th>
                   <th className="px-6 py-4 font-bold uppercase tracking-widest text-[10px] text-right">Hành động</th>
                 </tr>
               </thead>
@@ -236,6 +237,7 @@ export default function ZonesManagementPage() {
                   const zId = zone._id || zone.id;
                   const busy = busyZoneId === zId;
                   const poiCount = Array.isArray(zone.poiCodes) ? zone.poiCodes.length : (Array.isArray(zone.pois) ? zone.pois.length : 0);
+                  const scanCount = zone.scanCount || 0;
                   return (
                     <tr key={String(zId)} className="group hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-900">{zone.name}</td>
@@ -247,6 +249,9 @@ export default function ZonesManagementPage() {
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant="blue">{poiCount} POIs</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="emerald">{scanCount.toLocaleString()} Scans</Badge>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="inline-flex gap-2">
